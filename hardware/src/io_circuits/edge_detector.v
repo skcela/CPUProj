@@ -9,6 +9,12 @@ module edge_detector #(
     // This module takes a vector of 1-bit signals as input and outputs a vector of 1-bit signals. For each input signal
     // this module will look for a low to high (0->1) logic transition, and should then output a 1 clock cycle wide pulse
     // for that signal.
-    // Remove this line once you have implemented this module.
-    assign edge_detect_pulse = 0;
+    reg [width-1:0] previous_value;
+
+    always @(posedge clk) begin
+    	previous_value <= signal_in;
+    end
+
+    assign edge_detect_pulse = ~previous_value & signal_in;
+
 endmodule
