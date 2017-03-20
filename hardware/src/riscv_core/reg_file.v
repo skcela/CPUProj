@@ -23,4 +23,18 @@ module reg_file (
 );
     assign rd1 = 32'd0;
     assign rd2 = 32'd0;
+
+
+    (* ram_style = "distributed" *) reg [31:0] reg_file [31:0] = 0;
+
+    always @(posedge clk) begin
+    	if (we & (wa != 0)) begin
+    		reg_file[wa] <= wd;
+    	end
+    end
+
+    assign rd1 = reg_file[ra1];
+    assign rd2 = reg_file[ra2];
+
+
 endmodule
