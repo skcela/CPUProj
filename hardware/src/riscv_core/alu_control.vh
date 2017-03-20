@@ -14,4 +14,8 @@
 `define LT		4'b1001
 `define LTU 	4'b1010
 
+// No operation, for instructions that don't
+// need the ALU, for example LUI
+`define NOP		4'b1111
+
 `endif //ALU_CONTROL
