@@ -25,7 +25,7 @@ module reg_file (
     assign rd2 = 32'd0;
 
 
-    (* ram_style = "distributed" *) reg [31:0] reg_file [31:0] = 0;
+    (* ram_style = "distributed" *) reg [31:0] reg_file [31:0];
 
     always @(posedge clk) begin
     	if (we & (wa != 0)) begin

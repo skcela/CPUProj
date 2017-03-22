@@ -1,6 +1,6 @@
 
-`ifndef ALU_CONTROL
-`define ALU_CONTROL
+`ifndef ALU_CONTROLL
+`define ALU_CONTROLL
 
 
 `define ADD 	4'b0000
