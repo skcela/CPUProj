@@ -83,6 +83,10 @@ always @(*) begin
 		`OPC_BRANCH: alu_controll = `SUB;
 		`OPC_AUIPC:  alu_controll = `ADD;
 		`OPC_LUI:	alu_controll = `NOP; // No ALU operation needed
+		default:begin
+			alu_controll = `NOP;
+			$display("Unknown opcode in alu_controller");
+		 end
 	endcase
 end
 
