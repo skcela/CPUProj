@@ -16,7 +16,6 @@ module stage3(
 
  	// connection to memory
  	input [31:0] mem_data,
- 	output [31:0] mem_addr,
 
  	// Writeback to reg file
  	output [31:0] writeback_data,

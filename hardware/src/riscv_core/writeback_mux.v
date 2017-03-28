@@ -32,7 +32,7 @@ module writeback_mux(
 							end
 			`OPC_LOAD: begin
 						writeback_data = 1;
-						// slice data out for word, half or byte
+						// slice data for word, half or byte
 						case(funct3)
 							`FNC_LW: writeback_enable_reg = mem_dout;
 							`FNC_LH: writeback_enable_reg = {{16{mem_dout[15]}}, mem_dout[15:0]};
