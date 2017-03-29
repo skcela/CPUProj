@@ -20,6 +20,8 @@ module mem_write_controller(
 	wire [6:0] funct7;
 	assign funct7 = instruction[31:25];
 
+	reg [31:0] data_out_reg;
+	assign data_out = data_out_reg;
 
 	reg [3:0] write_enable_mask_reg;
 	assign write_enable_mask = write_enable_mask_reg;
@@ -30,28 +32,28 @@ module mem_write_controller(
 				`FNC_SB: begin
 							write_enable_mask_reg = 4'b0001 << address[1:0];
 							case(address[1:0])
-								2'b00:	data_out = {24'b0, data_in[7:0]};
-								2'b01:	data_out = {16'b0, data_in[7:0], 8'b0};
-								2'b10:	data_out = {8'b0, data_in[7:0], 16'b0};
-								2'b11:	data_out = {data_in[7:0], 24'b0};
+								2'b00:	data_out_reg = {24'b0, data_in[7:0]};
+								2'b01:	data_out_reg = {16'b0, data_in[7:0], 8'b0};
+								2'b10:	data_out_reg = {8'b0, data_in[7:0], 16'b0};
+								2'b11:	data_out_reg = {data_in[7:0], 24'b0};
 							endcase
 						 end
 				`FNC_SH: begin
 							write_enable_mask_reg = 4'b0011 << address[1:0];
 							case(address[1:0])
-								2'b00:	data_out = {16'b0, data_in[15:0]};
-								2'b01:	data_out = {8'b0, data_in[15:0], 8'b0};
-								2'b10:	data_out = {data_in[15:0], 16'b0};
+								2'b00:	data_out_reg = {16'b0, data_in[15:0]};
+								2'b01:	data_out_reg = {8'b0, data_in[15:0], 8'b0};
+								2'b10:	data_out_reg = {data_in[15:0], 16'b0};
 								2'b11:	begin
-											data_out = {16'b0, data_in[15:0]};
+											data_out_reg = {16'b0, data_in[15:0]};
 											// Ignore unaligned Memory access
-											write_enable_mask = 4'b0000;
+											write_enable_mask_reg = 4'b0000;
 										end
 							endcase
 						 end
 				`FNC_SW: begin
 							write_enable_mask_reg = 4'b1111;
-							data_out = data_in;
+							data_out_reg = data_in;
 						 end
 				default: begin
 					write_enable_mask_reg = 4'b0000;
@@ -60,6 +62,7 @@ module mem_write_controller(
 			endcase
 		end else begin
 			write_enable_mask_reg = 4'b0000;
+			data_out_reg = 0;
 		end
 	end
 

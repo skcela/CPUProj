@@ -14,23 +14,23 @@
 
 module reg_file (
     input clk,
+    input rst,
     input we,
-    input regWrForward1,
-    input regWrForward2,
     input [4:0] ra1, ra2, wa,
     input [31:0] wd,
     output [31:0] rd1, rd2
 );
-    assign rd1 = 32'd0;
-    assign rd2 = 32'd0;
-
 
     (* ram_style = "distributed" *) reg [31:0] reg_file [31:0];
-
+    integer i;
     always @(posedge clk) begin
-    	if (we & (wa != 0)) begin
-    		reg_file[wa] <= wd;
-    	end
+        if (rst) begin
+            for (i=0; i<31; i=i+1) reg_file[i] <= 31'b0;
+        end else begin
+        	if (we & (wa != 0)) begin
+        		reg_file[wa] <= wd;
+        	end
+        end
     end
 
     assign rd1 = reg_file[ra1];
