@@ -8,4 +8,4 @@ function usage() {
 [ -f $1 ] || usage
 
 cd build
-vsim ../$1
+vsim ../$1 -do ../tests/riscv_opcodes.do
