@@ -1,3 +1,5 @@
+`include "mux_selects.vh"
+
 /**
  * Top-level module for the RISCV processor.
  * Contains instantiations of datapath and control unit.
@@ -15,23 +17,36 @@ module Riscv151 #(
 
     reg [31:0] pc;
     wire [31:0] pc_plus_4;
-    wire [31:0] next_pc;
+    reg [31:0] next_pc;
     assign pc_plus_4 = pc + 4;
-
-    // TODO: mux with branch, JALR, ...
-    assign next_pc = pc_plus_4;
 
     // Instruction in first stage
     wire [31:0] bios_mem_instruction_out;
     wire [31:0] imem_instruction_out;
-
     wire [31:0] instruction_1;
     assign instruction_1 = pc[30] ? bios_mem_instruction_out 
                                   : imem_instruction_out;
 
     // pipeline registers for pc and instruction
-    reg [31:0] instruction_2;
-    reg [31:0] instruction_3;
+    wire [31:0] instruction_2;
+    wire [31:0] instruction_3;
+
+    wire [31:0] branch_address;
+
+    wire [`PC_MUX_SEL_WIDTH-1:0] pc_mux_sel;
+    wire [31:0] alu_out;
+
+
+    always @(*) begin
+        case(pc_mux_sel)
+            `PC_MUX_BRANCH: next_pc = branch_address;
+            `PC_MUX_J:      next_pc = alu_out;
+            default:        next_pc = pc_plus_4;
+        endcase
+    end
+
+
+
 
     reg [31:0] pc_2;
     reg [31:0] pc_3;
@@ -45,9 +60,6 @@ module Riscv151 #(
 
         pc_plus_4_2 <= pc_plus_4;
         pc_plus_4_3 <= pc_plus_4_2;
-
-        instruction_2 <= instruction_1;
-        instruction_3 <= instruction_2;
     end
 
     always @(posedge clk) begin
@@ -60,8 +72,6 @@ module Riscv151 #(
         end
     end
 
-    wire [31:0] alu_out;
-
     // register for third pipeline stage
     reg [31:0] alu_out_3;
 
@@ -69,8 +79,9 @@ module Riscv151 #(
     // You should tie the ena, enb inputs of your memories to 1'b1
     // They are just like power switches for your block RAMs
     wire [3:0] write_enable_mask;
-    wire dmem_write_enable;
-    wire imem_write_enable;
+    wire [3:0] dmem_write_enable;
+    wire [3:0] imem_write_enable;
+    wire [31:0] mem_controller_data_out;
     reg [31:0] mem_data_in;
     mem_write_controller mem_write_controller(
         .instruction(instruction_2),
@@ -126,6 +137,35 @@ module Riscv151 #(
         .data_out(mem_dout)
     );
 
+    wire [`WB_MUX_SEL_WIDTH-1:0] wb_mux_sel;
+    wire [`ALU_IN_MUX_SEL_WIDTH-1:0] alu_in_mux_1_sel;
+    wire [`ALU_IN_MUX_SEL_WIDTH-1:0] alu_in_mux_2_sel;
+    // Controll Unit
+
+    wire branch_condition;
+
+
+    control_unit control_unit(
+        .clk(clk),
+        .instruction_1(instruction_1),
+        .instruction_2_o(instruction_2),
+        .instruction_3_o(instruction_3),
+        .branch_condition(branch_condition),
+        .wb_reg_hazard_rs1(wb_reg_hazard_rs1),
+        .wb_reg_hazard_rs2(wb_reg_hazard_rs2),
+        .alu_in_mux_1_sel(alu_in_mux_1_sel),
+        .alu_in_mux_2_sel(alu_in_mux_2_sel),
+        .wb_mux_sel(wb_mux_sel),
+        .pc_mux_sel(pc_mux_sel)
+    );
+
+
+    branch_checker branch_checker(
+        .instruction_2(instruction_2),
+        .alu_output(alu_out),
+        .branch_condition(branch_condition)
+    );
+
     // Construct your datapath, add as many modules as you want
     
 
@@ -147,31 +187,30 @@ module Riscv151 #(
         .rd2(rd2)
     );
 
-    wire [31:0] alu_mux_out_1;
-    wire [31:0] alu_mux_out_2;
+    reg [31:0] rd1_2;
+    reg [31:0] rd2_2;
 
-    alu_in_muxes alu_in_muxes(
-        .instruction(instruction_1),
-        .rd1(rd1),
-        .rd2(rd2),
-        .pc(pc),
-        .writeback(),
-        .fwi(),
-        
-        .alu_in_1(alu_mux_out_1), 
-        .alu_in_2(alu_mux_out_2)
-    );
-
-
-    reg [31:0] alu_in_1;
-    reg [31:0] alu_in_2;
-
-    // Registers for second pipeline stage
+    // Registers for first pipeline stage
     always @(posedge clk ) begin
-        alu_in_1 <= alu_mux_out_1;
-        alu_in_2 <= alu_mux_out_2;
+        rd1_2 <= wb_reg_hazard_rs1 ? rf_write_data : rd1;
+        rd2_2 <= wb_reg_hazard_rs2 ? rf_write_data : rd2;
         mem_data_in <= rd2;
     end
+
+    wire [31:0] alu_in_1;
+    wire [31:0] alu_in_2;
+    alu_in_muxes alu_in_muxes(
+        .instruction(instruction_2),
+        .mux_1_sel(alu_in_mux_1_sel),
+        .mux_2_sel(alu_in_mux_2_sel),
+        .rd1(rd1_2),
+        .rd2(rd2_2),
+        .pc(pc_2),
+        .fw_writeback(rf_write_data),
+        
+        .alu_in_1(alu_in_1), 
+        .alu_in_2(alu_in_2)
+    );
 
     stage2 stage2(
         .instruction_in(instruction_2),
@@ -182,7 +221,7 @@ module Riscv151 #(
 
         // pc for calculation of branch address
         .pc(pc_2),
-        .branch_address()
+        .branch_address(branch_address)
     );
 
     // register for third pipeline stage
@@ -192,6 +231,7 @@ module Riscv151 #(
 
     writeback_mux writeback_mux(
         .instruction(instruction_3),
+        .mux_sel(wb_mux_sel),
         .pc_plus_4(pc_plus_4_3),
         .mem_dout(mem_dout),
         .alu_out(alu_out_3),
@@ -199,7 +239,6 @@ module Riscv151 #(
         .writeback_enable(rf_write_enable)
     );
 
-    assign writeback_adr = instruction_3[11:7];
 
 
     // On-chip UART

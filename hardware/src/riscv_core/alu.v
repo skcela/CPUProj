@@ -1,4 +1,4 @@
-`include "alu_controll.vh"
+`include "alu_control.vh"
 
 module alu(
 	input [31:0] in1, in2,
@@ -21,6 +21,9 @@ always @(*) begin
 		`SRA: out_reg = ($signed (in1)) >>> in2;
 		`LT : out_reg = (($signed (in1)) < ($signed (in2))) ? 1'b1 : 1'b0;
 		`LTU: out_reg = (in1 < in2) ? 1'b1 : 1'b0;
+		`GTE: out_reg = (($signed (in1)) >= ($signed (in2))) ? 1'b1 : 1'b0;
+		`GTEU:out_reg = (in1 >= in2) ? 1'b1 : 1'b0;
+		`EQ:  out_reg = (in1 == in2);
 		`NOP: out_reg = 0;
 		default: begin
 			out_reg = 0;

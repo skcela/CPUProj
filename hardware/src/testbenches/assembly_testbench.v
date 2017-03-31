@@ -41,9 +41,12 @@ module assembly_testbench();
         while (`REGFILE_ARRAY_PATH !== expected_value) @(posedge clk);
     endtask
 
+    reg [3:0] a;
+    reg b;
+
     initial begin
         rst = 0;
-
+        
         // Reset the CPU
         rst = 1;
         repeat (30) @(posedge clk);             // Hold reset for 30 cycles
@@ -59,6 +62,29 @@ module assembly_testbench();
         wait_for_reg_to_equal(20, 32'd2);       // Run the simulation until the flag is set to 2
         check_reg(1, 32'd500, 2);               // Verify that x1 contains 500
         check_reg(2, 32'd100, 3);               // Verify that x2 contains 100
+
+        // Test BNE followed by JAL
+        wait_for_reg_to_equal(20, 32'd3);
+        check_reg(1, 600, 4);
+        check_reg(2, 234, 5);
+
+        // Test Store and load
+        wait_for_reg_to_equal(20, 32'd4);
+        check_reg(2, 100, 6);
+        check_reg(3, 200, 7);
+        check_reg(1, 200, 8);
+
+
+        wait_for_reg_to_equal(20, 32'd6);
+        check_reg(2, 30, 9);
+        check_reg(1, 20, 10);
+
+
+        wait_for_reg_to_equal(20, 32'd7);
+        check_reg(1, 10, 11);
+        check_reg(2, 20, 12);
+        check_reg(3, 30, 13);
+
 
         $display("ALL ASSEMBLY TESTS PASSED");
         $finish();

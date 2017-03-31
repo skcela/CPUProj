@@ -1,4 +1,4 @@
-`include "alu_controll.vh"
+`include "alu_control.vh"
 `include "Opcode.vh"
 
 module alu_controller(
@@ -76,11 +76,21 @@ always @(*) begin
 		`OPC_LOAD:  alu_controll = `ADD;
 		`OPC_STORE: alu_controll = `ADD;
 		`OPC_JALR:  alu_controll = `ADD;
-		`OPC_JAL: begin
-					alu_controll = `NOP;
-					$display("JAL in alu_controller");
-				 end
-		`OPC_BRANCH: alu_controll = `SUB;
+		`OPC_JAL:   alu_controll = `ADD;
+		`OPC_BRANCH: begin
+					case(funct3)
+						`FNC_BEQ: alu_controll = `EQ;
+						`FNC_BNE: alu_controll = `EQ;
+						`FNC_BLT: alu_controll = `LT;
+						`FNC_BGE: alu_controll = `GTE;
+						`FNC_BLTU:alu_controll = `LTU;
+						`FNC_BGEU:alu_controll = `GTEU;
+						default: begin
+							alu_controll = `NOP;
+							$display("Unknown funct3 in alu_controller branch");
+						end
+					endcase
+				end
 		`OPC_AUIPC:  alu_controll = `ADD;
 		`OPC_LUI:	alu_controll = `NOP; // No ALU operation needed
 		7'b0000000: alu_controll = `NOP;

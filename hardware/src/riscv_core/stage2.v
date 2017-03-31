@@ -15,7 +15,7 @@ module stage2(
 	wire [31:0] imm_sb;
 	assign imm_sb = {{19{instruction_in[31]}}, instruction_in[31], 
 					  instruction_in[7], instruction_in[30:25], 
-					  instruction_in[11:8], 1'b1};
+					  instruction_in[11:8], 1'b0};
 
 	assign branch_address = pc + imm_sb;
 

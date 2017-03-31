@@ -1,6 +1,6 @@
 `timescale 1ns/100ps
 
-`include "alu_controll.vh"
+`include "alu_control.vh"
 `include "Opcode.vh"
 
 module alu_testbench();

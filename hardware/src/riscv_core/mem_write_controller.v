@@ -7,8 +7,8 @@ module mem_write_controller(
 	input [31:0] data_in,
 	output [31:0] data_out,
 	output [3:0] write_enable_mask,
-	output dmem_write_enable,
-	output imem_write_enable
+	output [3:0] dmem_write_enable,
+	output [3:0] imem_write_enable
 	);
 
 	wire [6:0] opcode;
@@ -66,8 +66,8 @@ module mem_write_controller(
 		end
 	end
 
-	assign dmem_write_enable = address[28];
-	assign imem_write_enable = address[29];
+	assign dmem_write_enable = {4{address[28]}};
+	assign imem_write_enable = {4{address[29]}};
 
 
 endmodule
