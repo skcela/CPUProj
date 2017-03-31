@@ -147,6 +147,7 @@ module Riscv151 #(
 
     control_unit control_unit(
         .clk(clk),
+        .rst(rst),
         .instruction_1(instruction_1),
         .instruction_2_o(instruction_2),
         .instruction_3_o(instruction_3),

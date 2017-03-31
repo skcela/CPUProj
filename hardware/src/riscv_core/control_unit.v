@@ -3,6 +3,7 @@
 
 module control_unit(
 	input clk,
+	input rst,
 	input [31:0] instruction_1,
 
 	output [31:0] instruction_2_o,
@@ -75,11 +76,16 @@ module control_unit(
 
 
 	always @(posedge clk) begin
-		instruction_2 <= ((opcode_2 == `OPC_BRANCH & branch_condition)
-							| (opcode_2 == `OPC_JALR) 
-							| (opcode_2 == `OPC_JAL)) 
-							? 32'b0 : instruction_1;
-		instruction_3 <= instruction_2;
+		if(rst) begin
+			instruction_2 <= 0;
+			instruction_3 <= 0; 			
+		end else begin
+			instruction_2 <= ((opcode_2 == `OPC_BRANCH & branch_condition)
+								| (opcode_2 == `OPC_JALR) 
+								| (opcode_2 == `OPC_JAL)) 
+								? 32'b0 : instruction_1;
+			instruction_3 <= instruction_2;
+		end
 	end
 
 	
