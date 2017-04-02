@@ -14,6 +14,9 @@ module control_unit(
 	output wb_reg_hazard_rs1,
 	output wb_reg_hazard_rs2,
 
+	output store_alu_hazard,
+	output store_wb_hazard,
+
 	output [`ALU_IN_MUX_SEL_WIDTH-1:0] alu_in_mux_1_sel,
 	output [`ALU_IN_MUX_SEL_WIDTH-1:0] alu_in_mux_2_sel,
 
@@ -58,11 +61,20 @@ module control_unit(
 	wire alu_in_hazard_ra_2;
 	assign alu_in_hazard_ra_1 = ((inst_2_ra_1 == inst_3_rd) 
 								& (opcode_3 != `OPC_BRANCH)
-								& (opcode_3 != `OPC_STORE));
+								& (opcode_3 != `OPC_STORE)
+								& (opcode_2 != `OPC_JAL)
+								& (opcode_2 != `OPC_LUI)
+								& (opcode_2 != `OPC_AUIPC));
 	assign alu_in_hazard_ra_2 = ((inst_2_ra_2 == inst_3_rd)
 								& (opcode_3 != `OPC_BRANCH)
 								& (opcode_3 != `OPC_STORE)
-								& (opcode_2 != `OPC_ARI_ITYPE));
+								& (opcode_2 != `OPC_ARI_ITYPE)
+								& (opcode_2 != `OPC_STORE)
+								& (opcode_2 != `OPC_LOAD)
+								& (opcode_2 != `OPC_JAL)
+								& (opcode_2 != `OPC_JALR)
+								& (opcode_2 != `OPC_LUI)
+								& (opcode_2 != `OPC_AUIPC));
 
 
 	assign wb_reg_hazard_rs1 = ((inst_1_ra_1 == inst_3_rd)
@@ -70,9 +82,14 @@ module control_unit(
 								& (opcode_3 != `OPC_STORE));
 	assign wb_reg_hazard_rs2 = ((inst_1_ra_2 == inst_3_rd)
 								& (opcode_3 != `OPC_BRANCH)
-								& (opcode_3 != `OPC_STORE)
-								& (opcode_2 != `OPC_ARI_ITYPE));
+								& (opcode_3 != `OPC_STORE));
 
+
+	assign store_alu_hazard = ((inst_2_ra_2 == inst_3_rd)
+								& (opcode_2 == `OPC_STORE));
+
+	assign store_wb_hazard = ((inst_1_ra_2 == inst_3_rd)
+								& (opcode_1 == `OPC_STORE));
 
 
 	always @(posedge clk) begin
@@ -137,7 +154,7 @@ module control_unit(
 								end
 				default: begin
 						alu_in_mux_1_sel_reg = `ALU_IN_MUX_NULL;
-					$display("Unknown opcode in controll_unit for alu in mux");
+					$display("Unknown opcode in controll_unit for alu in mux 1 (%d)" , $time);
 				end
 			endcase
 		end
@@ -167,7 +184,7 @@ module control_unit(
 								end
 				default: begin
 						alu_in_mux_2_sel_reg = `ALU_IN_MUX_NULL;
-					$display("Unknown opcode in controll_unit for alu in mux");
+					$display("Unknown opcode in controll_unit for alu in mux 2 (%d)" , $time);
 				end
 			endcase
 		end
@@ -203,7 +220,7 @@ module control_unit(
 						end
 			default: begin
 					wb_mux_sel_reg = `WB_NULL;
-					$display("Unknown opcode in controll_unit for wb mux");
+					$display("Unknown opcode in controll_unit for wb mux (%d)" , $timemake);
 				end
 		endcase
 	end

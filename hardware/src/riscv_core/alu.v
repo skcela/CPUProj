@@ -27,7 +27,7 @@ always @(*) begin
 		`NOP: out_reg = 0;
 		default: begin
 			out_reg = 0;
-			$display("Undefined control in ALU");
+			$display("Undefined control in ALU (%d)" , $time);
 		end
 	endcase
 end

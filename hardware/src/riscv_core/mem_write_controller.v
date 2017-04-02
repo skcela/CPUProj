@@ -8,7 +8,9 @@ module mem_write_controller(
 	output [31:0] data_out,
 	output [3:0] write_enable_mask,
 	output [3:0] dmem_write_enable,
-	output [3:0] imem_write_enable
+	output [3:0] imem_write_enable,
+	output cycle_counter_write_enable,
+	output uart_write_enable
 	);
 
 	wire [6:0] opcode;
@@ -68,6 +70,8 @@ module mem_write_controller(
 
 	assign dmem_write_enable = {4{address[28]}};
 	assign imem_write_enable = {4{address[29]}};
+	assign cycle_counter_write_enable = (address== 32'h80000018) & (opcode == `OPC_STORE);
+	assign uart_write_enable = (address== 32'h80000008) & (opcode == `OPC_STORE);
 
 
 endmodule

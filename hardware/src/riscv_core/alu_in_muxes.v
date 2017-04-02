@@ -48,7 +48,7 @@ module alu_in_muxes(
 			`ALU_IN_MUX_FW_WB: 	alu_in_1_reg = fw_writeback;
 			default: begin
 				alu_in_1_reg = 0;
-				$display("Unknown mux_1_sel in alu in mux");
+				$display("Unknown mux_1_sel in alu in mux (%d)" , $time);
 			end
 		endcase
 
@@ -62,7 +62,7 @@ module alu_in_muxes(
 			`ALU_IN_MUX_FW_WB: 	 alu_in_2_reg = fw_writeback;
 			default: begin
 				alu_in_2_reg = 0;
-				$display("Unknown mux_2_sel in alu in mux");
+				$display("Unknown mux_2_sel in alu in mux (%d)" , $time);
 			end
 
 		endcase

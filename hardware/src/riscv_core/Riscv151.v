@@ -1,5 +1,5 @@
 `include "mux_selects.vh"
-
+`include "Opcode.vh"
 /**
  * Top-level module for the RISCV processor.
  * Contains instantiations of datapath and control unit.
@@ -30,6 +30,9 @@ module Riscv151 #(
     // pipeline registers for pc and instruction
     wire [31:0] instruction_2;
     wire [31:0] instruction_3;
+
+    wire [6:0] opcode_3;
+    assign opcode_3 = instruction_3[6:0];
 
     wire [31:0] branch_address;
 
@@ -75,22 +78,35 @@ module Riscv151 #(
     // register for third pipeline stage
     reg [31:0] alu_out_3;
 
+    // wires for reg file
+    wire rf_write_enable;
+    wire [31:0] rf_write_data;
+
+    wire [31:0] rd1;
+    wire [31:0] rd2;
+
+
     // Instantiate your memories here
     // You should tie the ena, enb inputs of your memories to 1'b1
     // They are just like power switches for your block RAMs
     wire [3:0] write_enable_mask;
     wire [3:0] dmem_write_enable;
     wire [3:0] imem_write_enable;
+    wire cycle_counter_write_enable;
+    wire uart_write_enable;
     wire [31:0] mem_controller_data_out;
     reg [31:0] mem_data_in;
+    wire store_alu_hazard;
     mem_write_controller mem_write_controller(
         .instruction(instruction_2),
         .address(alu_out),
-        .data_in(mem_data_in),
+        .data_in(store_alu_hazard ? rf_write_data :  mem_data_in),
         .data_out(mem_controller_data_out),
         .write_enable_mask(write_enable_mask),
         .dmem_write_enable(dmem_write_enable),
-        .imem_write_enable(imem_write_enable)
+        .imem_write_enable(imem_write_enable),
+        .cycle_counter_write_enable(cycle_counter_write_enable),
+        .uart_write_enable(uart_write_enable)
     );
 
     wire [31:0] dmem_data_out;
@@ -127,13 +143,36 @@ module Riscv151 #(
         .doutb(imem_instruction_out)
     );
 
+    wire [31:0] cycle_counter_dout;
+    cycle_counter cycle_counter(
+        .clk(clk),
+        .rst(rst),
+        .instruction_3(instruction_3),
+        .address(alu_out),
+        .write_enable(cycle_counter_write_enable),
+        .d_in(mem_controller_data_out),
+        .d_out(cycle_counter_dout)
+    );
+
     wire [31:0] mem_dout;
+
+    wire [7:0] uart_dout;
+    wire uart_din_ready;
+    wire uart_dout_valid;
+
+    wire [31:0] uart_data_0;
+    wire [31:0] uart_data_4;
+    assign uart_data_0 = {30'b0, uart_dout_valid, uart_din_ready};
+    assign uart_data_4 = {24'b0, uart_dout};
+
     mem_read_controller mem_read_controller(
         .instruction(instruction_3),
         .mem_addr(alu_out_3),
         .dmem_data_in(dmem_data_out),
         .bios_data_in(bios_mem_data_out),
-        .io_data_in(),
+        .uart_data_0_in(uart_data_0),
+        .uart_data_4_in(uart_data_4),
+        .cycle_counter_data_in(cycle_counter_dout),
         .data_out(mem_dout)
     );
 
@@ -143,7 +182,7 @@ module Riscv151 #(
     // Controll Unit
 
     wire branch_condition;
-
+    wire store_wb_hazard;
 
     control_unit control_unit(
         .clk(clk),
@@ -154,6 +193,8 @@ module Riscv151 #(
         .branch_condition(branch_condition),
         .wb_reg_hazard_rs1(wb_reg_hazard_rs1),
         .wb_reg_hazard_rs2(wb_reg_hazard_rs2),
+        .store_alu_hazard(store_alu_hazard),
+        .store_wb_hazard(store_wb_hazard),
         .alu_in_mux_1_sel(alu_in_mux_1_sel),
         .alu_in_mux_2_sel(alu_in_mux_2_sel),
         .wb_mux_sel(wb_mux_sel),
@@ -170,11 +211,6 @@ module Riscv151 #(
     // Construct your datapath, add as many modules as you want
     
 
-    wire rf_write_enable;
-    wire [31:0] rf_write_data;
-
-    wire [31:0] rd1;
-    wire [31:0] rd2;
 
     reg_file rf(
         .clk(clk),
@@ -195,7 +231,7 @@ module Riscv151 #(
     always @(posedge clk ) begin
         rd1_2 <= wb_reg_hazard_rs1 ? rf_write_data : rd1;
         rd2_2 <= wb_reg_hazard_rs2 ? rf_write_data : rd2;
-        mem_data_in <= rd2;
+        mem_data_in <= store_wb_hazard ? rf_write_data : rd2;
     end
 
     wire [31:0] alu_in_1;
@@ -240,7 +276,9 @@ module Riscv151 #(
         .writeback_enable(rf_write_enable)
     );
 
-
+    wire uart_dout_ready;
+    assign uart_dout_ready = ((alu_out_3[31:4] == 28'h8000000) 
+                              & (opcode_3 == `OPC_LOAD));
 
     // On-chip UART
     uart #(
@@ -248,14 +286,14 @@ module Riscv151 #(
     ) on_chip_uart (
         .clk(clk),
         .reset(rst),
-        .data_in(),
-        .data_in_valid(),
-        .data_out_ready(),
+        .data_in(mem_controller_data_out[7:0]),
+        .data_in_valid(uart_write_enable),
+        .data_out_ready(uart_dout_ready),
         .serial_in(FPGA_SERIAL_RX),
 
-        .data_in_ready(),
-        .data_out(),
-        .data_out_valid(),
+        .data_in_ready(uart_din_ready),
+        .data_out(uart_dout),
+        .data_out_valid(uart_dout_valid),
         .serial_out(FPGA_SERIAL_TX)
     );
 

@@ -70,5 +70,51 @@ addi x2, x1, 10
 add x3, x1, x2
 li x20, 7
 
+
+# store result of previous operation
+addi x2, x0, 10
+li x1, 1
+slli x1, x1, 28 # adress calculation
+addi x2, x0, 10
+addi x2, x2, 5
+sw x2, 100(x1)
+lw x3, 100(x1)
+li x20, 8
+
+jal x1, j2
+addi x2, x0, 25
+addi x3, x0, 35
+li x20, 9
+j nexttest
+
+j2: jalr x1, x1, 0
+addi x2, x0, 26
+addi x3, x0, 36
+li x20, 9
+
+nexttest: addi x1,x0,10
+bne x0,x0, Done
+add x2,x1,x1
+li x20, 10
+
+# test cycle counter
+li x1, 1
+slli x1, x1, 31 # adress calculation
+lw x2, 16(x1)
+lw x3, 20(x1)
+li x20, 11
+
+sw x0, 24(x1)  # reset counter
+lw x2, 16(x1)
+lw x3, 20(x1)
+li x20, 12
+
+lui x1, 0x10001
+li x10, 100		# Load argument 1 (rs1)
+li x11, 200		# Load argument 2 (rs2)
+li x12, 200		# Load argument 2 (rs2)
+addi x1, x1, -32
+li x20, 13
+
 Done: j Done
 

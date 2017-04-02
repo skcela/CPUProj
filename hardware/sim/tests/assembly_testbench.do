@@ -8,4 +8,5 @@ add wave assembly_testbench/CPU/alu_in_muxes/*
 add wave assembly_testbench/CPU/rf/*
 add wave assembly_testbench/CPU/stage2/*
 add wave assembly_testbench/CPU/control_unit/*
+add wave assembly_testbench/CPU/cycle_counter/*
 run 100us

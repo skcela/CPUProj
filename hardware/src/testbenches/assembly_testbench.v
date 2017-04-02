@@ -86,6 +86,30 @@ module assembly_testbench();
         check_reg(3, 30, 13);
 
 
+        wait_for_reg_to_equal(20, 32'd8);
+        check_reg(2, 15, 14);
+        check_reg(3, 15, 15);
+
+        wait_for_reg_to_equal(20, 32'd9);
+        check_reg(2, 25, 16);
+        check_reg(3, 35, 17);
+
+        wait_for_reg_to_equal(20, 32'd10);
+        check_reg(1, 10, 18);
+        check_reg(2, 20, 19);
+
+        wait_for_reg_to_equal(20, 32'd11);
+        $display("Cycle counter got %d for reg %d", CPU.rf.reg_file[2], 2);
+        $display("Instruction counter got %d for reg %d", CPU.rf.reg_file[3], 3);
+
+        wait_for_reg_to_equal(20, 32'd12);
+        $display("After reset cycle counter:");
+        $display("Cycle counter got %d for reg %d", CPU.rf.reg_file[2], 2);
+        $display("Instruction counter got %d for reg %d", CPU.rf.reg_file[3], 3);
+
+
+        wait_for_reg_to_equal(20, 32'd13);
+
         $display("ALL ASSEMBLY TESTS PASSED");
         $finish();
     end
