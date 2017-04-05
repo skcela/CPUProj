@@ -26,12 +26,11 @@ module control_unit(
 
 );
 	
-
+	// ----------------------- INSTRUCIONS -----------------------
 	reg [31:0] instruction_2;
 	reg [31:0] instruction_3;
 	assign instruction_2_o = instruction_2;
-	assign instruction_3_o = instruction_3;
-
+	assign instruction_3_o = instruction_3;	
 
 	wire [6:0] opcode_1;
 	assign opcode_1 = instruction_1[6:0];
@@ -41,8 +40,35 @@ module control_unit(
 
 	wire [6:0] opcode_3;
 	assign opcode_3 = instruction_3[6:0];
+	
+	// Pipeline register for instruction
+	always @(posedge clk) begin
+		if(rst) begin
+			instruction_2 <= 0;
+			instruction_3 <= 0; 			
+		end else begin
+			// kill instruction in first stage if we have a branch or jump
+			instruction_2 <= ((opcode_2 == `OPC_BRANCH & branch_condition)
+								| (opcode_2 == `OPC_JALR) 
+								| (opcode_2 == `OPC_JAL)) 
+								? 32'b0 : instruction_1;
+			instruction_3 <= instruction_2;
+		end
+	end
 
+	// Controll signals for pc mux
+	reg [`PC_MUX_SEL_WIDTH-1:0] pc_mux_sel_reg;
+	assign pc_mux_sel = pc_mux_sel_reg;
 
+	always @(*) begin
+		case(opcode_2)
+			`OPC_BRANCH: pc_mux_sel_reg = branch_condition ? 
+							`PC_MUX_BRANCH : `PC_MUX_PLUS_4;
+			`OPC_JALR, `OPC_JAL: pc_mux_sel_reg = `PC_MUX_J;
+			default: pc_mux_sel_reg = `PC_MUX_PLUS_4;
+		endcase
+	end
+	// ----------------------- HAZARDS -----------------------
 	wire [4:0] inst_1_ra_1;
 	wire [4:0] inst_1_ra_2;
 	wire [4:0] inst_2_ra_1;
@@ -54,7 +80,7 @@ module control_unit(
 	assign inst_2_ra_2 = instruction_2 [24:20];
 	assign inst_3_rd = instruction_3 [11:7];
 
-
+	// hazard between stage 2 and 3
 	// No alu_hazard if instruction is branch, store or load,
 	// since these instructions don't write back the alu result
 	wire alu_in_hazard_ra_1;
@@ -78,7 +104,7 @@ module control_unit(
 								& (opcode_2 != `OPC_LUI)
 								& (opcode_2 != `OPC_AUIPC));
 
-
+	// hazard between stage 1 and 3
 	assign wb_reg_hazard_rs1 = ((inst_1_ra_1 == inst_3_rd)
 								& (inst_3_rd != 0)
 								& (opcode_3 != `OPC_BRANCH)
@@ -88,7 +114,7 @@ module control_unit(
 								& (opcode_3 != `OPC_BRANCH)
 								& (opcode_3 != `OPC_STORE));
 
-
+	// hazard between stage 2 and 3 for store instructions
 	assign store_alu_hazard = ((inst_2_ra_2 == inst_3_rd)
 								& (inst_3_rd != 0)
 								& (opcode_2 == `OPC_STORE));
@@ -98,42 +124,13 @@ module control_unit(
 								& (opcode_1 == `OPC_STORE));
 
 
-	always @(posedge clk) begin
-		if(rst) begin
-			instruction_2 <= 0;
-			instruction_3 <= 0; 			
-		end else begin
-			instruction_2 <= ((opcode_2 == `OPC_BRANCH & branch_condition)
-								| (opcode_2 == `OPC_JALR) 
-								| (opcode_2 == `OPC_JAL)) 
-								? 32'b0 : instruction_1;
-			instruction_3 <= instruction_2;
-		end
-	end
 
-	
-
-	reg [`PC_MUX_SEL_WIDTH-1:0] pc_mux_sel_reg;
-	assign pc_mux_sel = pc_mux_sel_reg;
-
-	always @(*) begin
-		case(opcode_2)
-			`OPC_BRANCH: pc_mux_sel_reg = branch_condition ? 
-							`PC_MUX_BRANCH : `PC_MUX_PLUS_4;
-			`OPC_JALR, `OPC_JAL: pc_mux_sel_reg = `PC_MUX_J;
-			default: pc_mux_sel_reg = `PC_MUX_PLUS_4;
-		endcase
-	end
-
-
+	// ----------------------- ALU IN MUX -----------------------
 	// Controll signals for alu in muxes in stage 2
-	
-	
 	reg [`ALU_IN_MUX_SEL_WIDTH-1:0] alu_in_mux_1_sel_reg;
 	reg [`ALU_IN_MUX_SEL_WIDTH-1:0] alu_in_mux_2_sel_reg;
 	assign alu_in_mux_1_sel = alu_in_mux_1_sel_reg;
 	assign alu_in_mux_2_sel = alu_in_mux_2_sel_reg;
-
 
 	always @(*) begin
 		if (alu_in_hazard_ra_1) begin
@@ -165,7 +162,6 @@ module control_unit(
 			endcase
 		end
 
-
 		if (alu_in_hazard_ra_2) begin
 			alu_in_mux_2_sel_reg = `ALU_IN_MUX_FW_WB;
 		end else begin
@@ -194,19 +190,11 @@ module control_unit(
 				end
 			endcase
 		end
-
 	end
 
 
-
-
-
-
-
-
-
+	// ----------------------- WB MUX -----------------------
 	// Controll signals for WB Mux in stage 3
-
 	reg [`WB_MUX_SEL_WIDTH-1:0] wb_mux_sel_reg;
 	assign wb_mux_sel = wb_mux_sel_reg;
 
