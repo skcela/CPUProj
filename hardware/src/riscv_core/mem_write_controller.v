@@ -59,6 +59,7 @@ module mem_write_controller(
 						 end
 				default: begin
 					write_enable_mask_reg = 4'b0000;
+					data_out_reg = 0;
 					$display("Unknown funct3 in mem_controller store");
 				end
 			endcase

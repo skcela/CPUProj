@@ -16,9 +16,9 @@ always @(*) begin
 		`AND: out_reg = in1 & in2;
 		`OR:  out_reg = in1 | in2;
 		`XOR: out_reg = in1 ^ in2;
-		`SLL: out_reg = in1 << in2;
-		`SRL: out_reg = in1 >> in2;
-		`SRA: out_reg = ($signed (in1)) >>> in2;
+		`SLL: out_reg = in1 << in2[4:0];
+		`SRL: out_reg = in1 >> in2[4:0];
+		`SRA: out_reg = ($signed (in1)) >>> in2[4:0];
 		`LT : out_reg = (($signed (in1)) < ($signed (in2))) ? 1'b1 : 1'b0;
 		`LTU: out_reg = (in1 < in2) ? 1'b1 : 1'b0;
 		`GTE: out_reg = (($signed (in1)) >= ($signed (in2))) ? 1'b1 : 1'b0;

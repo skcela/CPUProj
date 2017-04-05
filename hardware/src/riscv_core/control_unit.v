@@ -60,12 +60,14 @@ module control_unit(
 	wire alu_in_hazard_ra_1;
 	wire alu_in_hazard_ra_2;
 	assign alu_in_hazard_ra_1 = ((inst_2_ra_1 == inst_3_rd) 
+								& (inst_3_rd != 0)
 								& (opcode_3 != `OPC_BRANCH)
 								& (opcode_3 != `OPC_STORE)
 								& (opcode_2 != `OPC_JAL)
 								& (opcode_2 != `OPC_LUI)
 								& (opcode_2 != `OPC_AUIPC));
 	assign alu_in_hazard_ra_2 = ((inst_2_ra_2 == inst_3_rd)
+								& (inst_3_rd != 0)
 								& (opcode_3 != `OPC_BRANCH)
 								& (opcode_3 != `OPC_STORE)
 								& (opcode_2 != `OPC_ARI_ITYPE)
@@ -78,17 +80,21 @@ module control_unit(
 
 
 	assign wb_reg_hazard_rs1 = ((inst_1_ra_1 == inst_3_rd)
+								& (inst_3_rd != 0)
 								& (opcode_3 != `OPC_BRANCH)
 								& (opcode_3 != `OPC_STORE));
 	assign wb_reg_hazard_rs2 = ((inst_1_ra_2 == inst_3_rd)
+								& (inst_3_rd != 0)
 								& (opcode_3 != `OPC_BRANCH)
 								& (opcode_3 != `OPC_STORE));
 
 
 	assign store_alu_hazard = ((inst_2_ra_2 == inst_3_rd)
+								& (inst_3_rd != 0)
 								& (opcode_2 == `OPC_STORE));
 
 	assign store_wb_hazard = ((inst_1_ra_2 == inst_3_rd)
+								& (inst_3_rd != 0)
 								& (opcode_1 == `OPC_STORE));
 
 
@@ -220,7 +226,7 @@ module control_unit(
 						end
 			default: begin
 					wb_mux_sel_reg = `WB_NULL;
-					$display("Unknown opcode in controll_unit for wb mux (%d)" , $timemake);
+					$display("Unknown opcode in controll_unit for wb mux (%d)" , $time);
 				end
 		endcase
 	end

@@ -41,8 +41,9 @@ module assembly_testbench();
         while (`REGFILE_ARRAY_PATH !== expected_value) @(posedge clk);
     endtask
 
-    reg [3:0] a;
-    reg b;
+    reg [31:0] a;
+    reg [31:0] b;
+    reg [31:0] c;
 
     initial begin
         rst = 0;
@@ -51,6 +52,13 @@ module assembly_testbench();
         rst = 1;
         repeat (30) @(posedge clk);             // Hold reset for 30 cycles
         rst = 0;
+/*
+        a = 32'h00000BCD;
+        b = 32'h00000001;
+        c = ($signed (a)) >>> b;
+        $display("c: %h", c);
+
+        $finish();*/
 
         // Your processor should begin executing the code in /software/assembly_tests/start.s
 
@@ -109,6 +117,9 @@ module assembly_testbench();
 
 
         wait_for_reg_to_equal(20, 32'd13);
+        
+        wait_for_reg_to_equal(20, 32'd14);
+        check_reg(1, 4294966758, 20);
 
         $display("ALL ASSEMBLY TESTS PASSED");
         $finish();

@@ -90,6 +90,7 @@ module mem_read_controller(
 							data_out_reg = data;
 						 end
 				default: begin
+					data_out_reg = 0;
 					$display("Unknown funct3 in mem_read_controller load (%d)" , $time);
 				end
 			endcase
