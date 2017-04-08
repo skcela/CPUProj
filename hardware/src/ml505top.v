@@ -50,14 +50,6 @@ module ml505top # (
     input FPGA_SERIAL_RX,
     output FPGA_SERIAL_TX
 );
-    // Remove these lines when implementing checkpoint 2.
-    assign PIEZO_SPEAKER = 1'b0;
-    assign GPIO_LED = 8'b0;
-    assign GPIO_LED_C = 1'b0;
-    assign GPIO_LED_N = 1'b0;
-    assign GPIO_LED_E = 1'b0;
-    assign GPIO_LED_W = 1'b0;
-    assign GPIO_LED_S = 1'b0;
 
     //// Clocking
     wire user_clk_g, cpu_clk, cpu_clk_g, pll_lock;
@@ -116,6 +108,10 @@ module ml505top # (
         .rotary_left(rotary_left)
     );
 
+    wire [12:0] leds;
+    assign {GPIO_LED_C, GPIO_LED_N, GPIO_LED_E, 
+            GPIO_LED_S, GPIO_LED_W, GPIO_LED} = leds;
+
     // AC97 Controller
     wire sdata_out, sync, reset_b;
     // Buffer the AC97 bit clock
@@ -156,12 +152,79 @@ module ml505top # (
         .system_reset(reset)
     );
 
+    wire tone_generator_enable;
+    wire [23:0] tone_generator_switch_period;
+
+    tone_generator tone_generator(
+        .clk(cpu_clk_g),
+        .rst(reset),
+        
+        .output_enable(tone_generator_enable & GPIO_DIP[0]),
+        .tone_switch_period(tone_generator_switch_period),
+
+        .square_wave_out(PIEZO_SPEAKER)
+    );
+
+
+    // FIFO connections
+    wire fifo_rd_en, fifo_empty;
+    wire [7:0] fifo_dout;
+
+    wire [7:0] button_data;
+    assign button_data = {compass_buttons[`B_CENTER], compass_buttons[`B_NORTH], 
+                            compass_buttons[`B_EAST], compass_buttons[`B_SOUTH], 
+                            compass_buttons[`B_WEST], rotary_push, rotary_event, rotary_left};
+    reg [7:0] fifo_din;
+    reg fifo_wr_en;
+    wire fifo_full;
+
+    always @(posedge cpu_clk_g) begin
+        if (reset) begin
+            fifo_din <= 0;
+            fifo_wr_en <= 0;
+        end else if ( |button_data[7:1] & ~fifo_full) begin
+            fifo_din <= button_data;
+            fifo_wr_en <= 1;
+        end else begin
+            fifo_din <= 0;
+            fifo_wr_en <= 0;
+        end
+    end
+
+    // FIFO
+    fifo #(
+        .data_width(8),
+        .fifo_depth(32)
+    ) fifo (
+        .clk(cpu_clk_g),
+        .rst(reset),
+
+        .wr_en(fifo_wr_en),
+        .din(fifo_din),
+        .full(fifo_full),
+
+        .rd_en(fifo_rd_en),
+        .dout(fifo_dout),
+        .empty(fifo_empty)
+    );
+
     // RISC-V 151 CPU
     Riscv151 #(
         .CPU_CLOCK_FREQ(CPU_CLOCK_FREQ)
     ) CPU(
         .clk(cpu_clk_g),
         .rst(reset),
+
+        .io_fifo_rd_en(fifo_rd_en),
+        .io_fifo_dout(fifo_dout),
+        .io_fifo_empty(fifo_empty),
+
+        .gpio_switches(GPIO_DIP),
+
+        .leds_dout(leds),
+
+        .tone_generator_enable(tone_generator_enable),
+        .tone_generator_switch_period(tone_generator_switch_period),
 
         .FPGA_SERIAL_RX(FPGA_SERIAL_RX),
         .FPGA_SERIAL_TX(FPGA_SERIAL_TX)

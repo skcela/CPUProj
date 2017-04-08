@@ -5,6 +5,9 @@ module mem_read_controller(
 	input[31:0] bios_data_in,
 	input[31:0] uart_data_0_in,
 	input[31:0] uart_data_4_in,
+	input io_fifo_empty,
+	input [7:0] io_fifo_dout,
+	input [7:0] gpio_switches,
 	input[31:0] cycle_counter_data_in,
 	output[31:0] data_out
 );
@@ -26,16 +29,18 @@ module mem_read_controller(
 		casex(mem_addr[31:28])
 			4'b00X1: data = dmem_data_in;
 			4'b0100: data = bios_data_in;
-			4'b1000: begin
-				case(mem_addr[4])
-					1'b0: begin
-						if(mem_addr[3:0] == 4'h0) begin
-							data = uart_data_0_in;
-						end else begin
-							data = uart_data_4_in;
-						end
+			4'b1000: begin // IO data
+				case(mem_addr[7:0])
+					8'h00: data = uart_data_0_in;
+					8'h04: data = uart_data_4_in;
+					8'h10, 8'h14: data = cycle_counter_data_in;
+					8'h20: data = {31'b0, io_fifo_empty};
+					8'h24: data = {24'b0, io_fifo_dout};
+					8'h28: data = {24'b0, gpio_switches};
+					default: begin
+						$display("unknown address for io in mem_read_controller");
+						data = 0;
 					end
-					1'b1: data = cycle_counter_data_in;
 				endcase
 			end
 			default: begin
