@@ -138,6 +138,9 @@ module ml505top # (
     always @ (posedge cpu_clk_g) begin
       reset_b_iob <= reset_b;
     end
+
+    
+    wire [3:0] ac_volume;
    
     ac97_controller #(
         .SYS_CLK_FREQ(CPU_CLOCK_FREQ)
@@ -146,10 +149,33 @@ module ml505top # (
         .sdata_out(sdata_out),
         .bit_clk(bit_clk),
         .sync(sync),
+        .sample_fifo_tone_data(sample_fifo_tone_data),
+        .sample_fifo_empty(sample_fifo_empty),
+        .sample_fifo_rd_en(sample_fifo_rd_en),
         .reset_b(reset_b),
-        .volume_control(GPIO_DIP[5:2]),
+        .volume_control(ac_volume),
         .system_clock(cpu_clk_g),
         .system_reset(reset)
+    );
+
+    wire ac_fifo_full;
+    wire ac_fifo_wr_en;
+    wire [19:0] ac_fifo_din;
+
+    async_fifo #(
+        .data_width(20),
+        .fifo_depth(8)
+    ) async_fifo (
+        .wr_clk(cpu_clk_g),
+        .rd_clk(bit_clk),
+
+        .wr_en(ac_fifo_wr_en),
+        .din(ac_fifo_din),
+        .full(ac_fifo_full),
+
+        .rd_en(sample_fifo_rd_en),
+        .dout(sample_fifo_tone_data),
+        .empty(sample_fifo_empty)
     );
 
     wire tone_generator_enable;
@@ -225,6 +251,11 @@ module ml505top # (
 
         .tone_generator_enable(tone_generator_enable),
         .tone_generator_switch_period(tone_generator_switch_period),
+
+        .ac_fifo_full(ac_fifo_full),
+        .ac_fifo_wr_en(ac_fifo_wr_en),
+        .ac_fifo_din(ac_fifo_din),
+        .ac_volume(ac_volume),
 
         .FPGA_SERIAL_RX(FPGA_SERIAL_RX),
         .FPGA_SERIAL_TX(FPGA_SERIAL_TX)

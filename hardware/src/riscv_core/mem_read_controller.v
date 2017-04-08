@@ -9,6 +9,7 @@ module mem_read_controller(
 	input [7:0] io_fifo_dout,
 	input [7:0] gpio_switches,
 	input[31:0] cycle_counter_data_in,
+	input ac_fifo_full,
 	output[31:0] data_out
 );
 
@@ -37,6 +38,7 @@ module mem_read_controller(
 					8'h20: data = {31'b0, io_fifo_empty};
 					8'h24: data = {24'b0, io_fifo_dout};
 					8'h28: data = {24'b0, gpio_switches};
+					8'h40: data = {31'b0, ac_fifo_full};
 					default: begin
 						$display("unknown address for io in mem_read_controller");
 						data = 0;

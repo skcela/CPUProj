@@ -21,6 +21,11 @@ module Riscv151 #(
     output tone_generator_enable,
     output [23:0] tone_generator_switch_period,
 
+    input ac_fifo_full,
+    output ac_fifo_wr_en,
+    output [19:0] ac_fifo_din,
+    output [3:0] ac_volume,
+
     // Ports for UART that go off-chip to UART level shifter
     input FPGA_SERIAL_RX,
     output FPGA_SERIAL_TX
@@ -179,6 +184,32 @@ module Riscv151 #(
         end
     end
 
+    // write to ac97 controller
+    reg [19:0] ac_fifo_din_reg;
+    reg [3:0] ac_volume_reg;
+    assign ac_fifo_din = ac_fifo_din_reg;
+    assign ac_volume = ac_volume_reg;
+    always @(posedge clk) begin
+        if (rst) begin
+            // reset
+            ac_fifo_din_reg <= 0;
+        end
+        else if ((alu_out == 32'h80000044) & (opcode_2 == `OPC_STORE)) begin
+            ac_fifo_din_reg <= mem_controller_data_out[19:0];
+        end
+    end
+
+    always @(posedge clk) begin
+        if (rst) begin
+            // reset
+            ac_volume_reg <= 0;
+        end
+        else if ((alu_out == 32'h80000048) & (opcode_2 == `OPC_STORE)) begin
+            ac_volume_reg <= mem_controller_data_out[3:0];
+        end
+    end
+
+
     // write the LEDs
     reg [13:0] leds_reg;
     assign leds_dout = leds_reg;
@@ -258,6 +289,7 @@ module Riscv151 #(
         .io_fifo_dout(io_fifo_dout),
         .gpio_switches(gpio_switches),
         .cycle_counter_data_in(cycle_counter_dout),
+        .ac_fifo_full(ac_fifo_full),
         .data_out(mem_dout)
     );
 
