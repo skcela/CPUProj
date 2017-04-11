@@ -40,7 +40,9 @@ module mem_read_controller(
 					8'h28: data = {24'b0, gpio_switches};
 					8'h40: data = {31'b0, ac_fifo_full};
 					default: begin
-						$display("unknown address for io in mem_read_controller");
+						if(opcode == `OPC_LOAD) begin
+							$display("unknown address for io in mem_read_controller (time , %d)!", $time);
+						end
 						data = 0;
 					end
 				endcase

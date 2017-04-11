@@ -67,9 +67,9 @@ module ac97_integration_testbench();
 
     initial begin
         // Initial reset
-        sys_rst <= 1'b1;
-        repeat (10) @(posedge sys_clk);
         sys_rst <= 1'b0;
+        repeat (10) @(posedge sys_clk);
+        sys_rst <= 1'b1;
 
         // Wait until the codec receives the PCM sample 50
         while (codec_model.slot_3 !== 50) @(posedge sys_clk);

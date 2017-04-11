@@ -141,6 +141,7 @@ module ml505top # (
 
     
     wire [3:0] ac_volume;
+    wire [19:0] sample_fifo_tone_data;
    
     ac97_controller #(
         .SYS_CLK_FREQ(CPU_CLOCK_FREQ)

@@ -4,6 +4,7 @@ file copy -force ../../../software/ac97_integration_tb/ac97_integration_tb.mif d
 file copy -force ../../../software/ac97_integration_tb/ac97_integration_tb.mif bios_mem.mif
 add wave ac97_integration_testbench/*
 add wave ac97_integration_testbench/top/*
+add wave ac97_integration_testbench/top/CPU/*
 add wave ac97_integration_testbench/codec_model/*
 add wave ac97_integration_testbench/codec_model/codec_ready
 add wave ac97_integration_testbench/codec_model/bit_counter
