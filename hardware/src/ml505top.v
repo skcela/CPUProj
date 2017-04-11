@@ -142,6 +142,9 @@ module ml505top # (
     
     wire [3:0] ac_volume;
     wire [19:0] sample_fifo_tone_data;
+    wire [20:0] mic_fifo_din;
+    wire mic_fifo_wr_en;
+    wire mic_fifo_full;
    
     ac97_controller #(
         .SYS_CLK_FREQ(CPU_CLOCK_FREQ)
@@ -155,6 +158,9 @@ module ml505top # (
         .sample_fifo_rd_en(sample_fifo_rd_en),
         .reset_b(reset_b),
         .volume_control(ac_volume),
+        .mic_sample_dout(mic_fifo_din),
+        .mic_fifo_wr_en(mic_fifo_wr_en),
+        .mic_fifo_full(mic_fifo_full),
         .system_clock(cpu_clk_g),
         .system_reset(reset)
     );
@@ -177,6 +183,26 @@ module ml505top # (
         .rd_en(sample_fifo_rd_en),
         .dout(sample_fifo_tone_data),
         .empty(sample_fifo_empty)
+    );
+
+
+    wire mic_fifo_empty;
+    wire mic_fifo_read_en;
+    wire [19:0] mic_fifo_dout;
+    async_fifo #(
+        .data_width(20),
+        .fifo_depth(8)
+    ) mic_fifo (
+        .wr_clk(bit_clk),
+        .rd_clk(cpu_clk_g),
+
+        .wr_en(mic_fifo_wr_en),
+        .din(mic_fifo_din),
+        .full(mic_fifo_full),
+
+        .rd_en(mic_fifo_read_en),
+        .dout(mic_fifo_dout),
+        .empty(mic_fifo_empty)
     );
 
     wire tone_generator_enable;
@@ -257,6 +283,10 @@ module ml505top # (
         .ac_fifo_wr_en(ac_fifo_wr_en),
         .ac_fifo_din(ac_fifo_din),
         .ac_volume(ac_volume),
+
+        .mic_fifo_empty(mic_fifo_empty),
+        .mic_fifo_read_en(mic_fifo_read_en),
+        .mic_fifo_dout(mic_fifo_dout),
 
         .FPGA_SERIAL_RX(FPGA_SERIAL_RX),
         .FPGA_SERIAL_TX(FPGA_SERIAL_TX)

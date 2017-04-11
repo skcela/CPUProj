@@ -26,6 +26,10 @@ module Riscv151 #(
     output [19:0] ac_fifo_din,
     output [3:0] ac_volume,
 
+    input mic_fifo_empty,
+    output mic_fifo_read_en,
+    input [19:0] mic_fifo_dout,
+
     // Ports for UART that go off-chip to UART level shifter
     input FPGA_SERIAL_RX,
     output FPGA_SERIAL_TX
@@ -298,6 +302,8 @@ module Riscv151 #(
         .gpio_switches(gpio_switches),
         .cycle_counter_data_in(cycle_counter_dout),
         .ac_fifo_full(ac_fifo_full),
+        .mic_fifo_empty(mic_fifo_empty),
+        .mic_fifo_dout(mic_fifo_dout),
         .data_out(mem_dout)
     );
 
