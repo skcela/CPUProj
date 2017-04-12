@@ -127,8 +127,14 @@ module ac97_controller #(
     reg [255:0] input_frame;
     reg [8:0] input_bit_counter = 0;
     reg running;
-    always @(negedge clk) begin
-        if (rst) begin
+
+    reg [19:0] mic_sample_dout_reg;
+    reg mic_fifo_wr_en_reg;
+    assign mic_sample_dout = mic_sample_dout_reg;
+    assign mic_fifo_wr_en = mic_fifo_wr_en_reg;
+
+    always @(negedge bit_clk) begin
+        if (reset_b) begin
             // reset
             input_frame <= 0;
             input_bit_counter <= 0;
@@ -148,22 +154,22 @@ module ac97_controller #(
             input_frame <= {input_frame[254:0], sdata_in};
             
             // Increase or reset bit counter
-            if (bit_counter == 1)
+            if (input_bit_counter == 1) begin
                 // write mic sample (slot 3) to fifo
-                mic_sample_dout <= input_frame[199:180];
-                mic_fifo_wr_en <= 1;
-                bit_counter <= bit_counter + 1;
-            end else if (bit_counter == 255) begin
-                bit_counter <= 0;
+                mic_sample_dout_reg <= input_frame[199:180];
+                mic_fifo_wr_en_reg <= 1;
+                input_bit_counter <= input_bit_counter + 1;
+            end else if (input_bit_counter == 255) begin
+                input_bit_counter <= 0;
                 if (sync) begin
                     running <= 1;
                 end else begin
                     running <= 0;
                 end
-                mic_fifo_wr_en <= 0;
+                mic_fifo_wr_en_reg <= 0;
             end else begin
-                bit_counter <= bit_counter + 1;
-                mic_fifo_wr_en <= 0;
+                input_bit_counter <= input_bit_counter + 1;
+                mic_fifo_wr_en_reg <= 0;
             end
         end
     end

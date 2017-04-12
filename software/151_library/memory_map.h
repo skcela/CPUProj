@@ -15,3 +15,6 @@
 #define AC97_FULL (*((volatile uint32_t*)0x80000040) & 0x01)
 #define AC97_DATA (*((volatile uint32_t*)0x80000044))
 #define AC97_VOLUME (*((volatile uint32_t*)0x80000048))
+
+#define MIC_STATUS (*((volatile uint32_t*)0x80000050))
+#define MIC_SAMPLE (*((volatile uint32_t*)0x80000054))
