@@ -1,7 +1,7 @@
 start ac97_integration_testbench
-file copy -force ../../../software/ac97_integration_tb/ac97_integration_tb.mif imem_blk_ram.mif
-file copy -force ../../../software/ac97_integration_tb/ac97_integration_tb.mif dmem_blk_ram.mif
-file copy -force ../../../software/ac97_integration_tb/ac97_integration_tb.mif bios_mem.mif
+file copy -force ../../../software/mic/mic.mif imem_blk_ram.mif
+file copy -force ../../../software/mic/mic.mif dmem_blk_ram.mif
+file copy -force ../../../software/mic/mic.mif bios_mem.mif
 add wave ac97_integration_testbench/*
 add wave ac97_integration_testbench/top/*
 add wave ac97_integration_testbench/top/CPU/*

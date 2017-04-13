@@ -11,7 +11,7 @@ module mem_read_controller(
 	input[31:0] cycle_counter_data_in,
 	input ac_fifo_full,
 	input mic_fifo_empty,
-	input [19:0] mic_fifo_dout,
+	input [31:0] mic_fifo_dout,
 	output[31:0] data_out
 );
 
@@ -42,7 +42,8 @@ module mem_read_controller(
 					8'h28: data = {24'b0, gpio_switches};
 					8'h40: data = {31'b0, ac_fifo_full};
 					8'h50: data = {31'b0, mic_fifo_empty};
-					8'h54: data = {12'b0, mic_fifo_dout};
+					//8'h54: data = {12'b0, mic_fifo_dout};
+					8'h54: data = mic_fifo_dout;
 					default: begin
 						if(opcode == `OPC_LOAD) begin
 							$display("unknown address for io in mem_read_controller (time , %d)!", $time);

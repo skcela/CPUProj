@@ -28,7 +28,7 @@ module Riscv151 #(
 
     input mic_fifo_empty,
     output mic_fifo_read_en,
-    input [19:0] mic_fifo_dout,
+    input [31:0] mic_fifo_dout,
 
     // Ports for UART that go off-chip to UART level shifter
     input FPGA_SERIAL_RX,
@@ -221,6 +221,7 @@ module Riscv151 #(
         end
     end
 
+    assign mic_fifo_read_en = ((alu_out == 32'h80000054) & (opcode_2 == `OPC_LOAD));
 
     // write the LEDs
     reg [12:0] leds_reg;

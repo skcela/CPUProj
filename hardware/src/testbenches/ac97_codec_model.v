@@ -87,6 +87,42 @@ module ac97_codec_model # (
         end
     end
 
+    reg [19:0] slot_3_data = 20'hABABA;
+    reg slot_3_valid = 1;
+    wire [255:0] data_out;
+    assign data_out = {1'b1, 2'b0, slot_3_valid, 12'b0, 40'b0, slot_3_data, 180'b0};
+    reg [255:0] shift_out = 0;
+    reg running = 0;
+    reg [9:0] out_bit_counter = 0;
+    reg sdata_in_reg = 0;
+    assign sdata_in = sdata_in_reg;
+
+    always @(posedge bit_clk) begin
+        if (sync & ~running) begin
+            // reset
+            running <= 1;
+            {sdata_in_reg, shift_out} <= {data_out, 1'b0};
+            out_bit_counter <= out_bit_counter + 1;
+        end
+        else if (running) begin
+            out_bit_counter <= out_bit_counter + 1;
+            if(out_bit_counter == 255) begin
+                out_bit_counter <= 0;
+            end
+
+            if (out_bit_counter == 0) begin
+                {sdata_in_reg, shift_out} <= {data_out, 1'b0};
+                slot_3_data <= slot_3_data + 1;
+                slot_3_valid <= ~slot_3_valid;
+            end else begin
+                {sdata_in_reg, shift_out} <= {shift_out, 1'b0};
+            end
+
+        end
+    end
+
+
+
     always begin
         @(negedge reset_b) begin
             codec_ready <= 1'b0;

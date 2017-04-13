@@ -142,14 +142,14 @@ module ml505top # (
     
     wire [3:0] ac_volume;
     wire [19:0] sample_fifo_tone_data;
-    wire [20:0] mic_fifo_din;
+    wire [31:0] mic_fifo_din;
     wire mic_fifo_wr_en;
     wire mic_fifo_full;
    
     ac97_controller #(
         .SYS_CLK_FREQ(CPU_CLOCK_FREQ)
     ) audio_controller (
-        .sdata_in(sdata_in_iob),
+        .sdata_in(AUDIO_SDATA_IN),
         .sdata_out(sdata_out),
         .bit_clk(bit_clk),
         .sync(sync),
@@ -188,9 +188,9 @@ module ml505top # (
 
     wire mic_fifo_empty;
     wire mic_fifo_read_en;
-    wire [19:0] mic_fifo_dout;
+    wire [31:0] mic_fifo_dout;
     async_fifo #(
-        .data_width(20),
+        .data_width(32),
         .fifo_depth(8)
     ) mic_fifo (
         .wr_clk(bit_clk),

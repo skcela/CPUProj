@@ -14,7 +14,7 @@ module ac97_controller #(
     output reset_b,           // Active low reset (reset bar) to the codec
     input [3:0] volume_control,  // This input is tied to GPIO switches 3, 4, 5, 6    
     
-    output [20:0] mic_sample_dout,
+    output [31:0] mic_sample_dout,
     output mic_fifo_wr_en,
     input mic_fifo_full,
 
@@ -124,23 +124,17 @@ module ac97_controller #(
 
 
     // MIC INPUT
-    reg [255:0] input_frame;
+    reg [255:0] input_frame = 0;
     reg [8:0] input_bit_counter = 0;
-    reg running;
+    reg running = 0;
 
-    reg [19:0] mic_sample_dout_reg;
-    reg mic_fifo_wr_en_reg;
+    reg [31:0] mic_sample_dout_reg = 0;
+    reg mic_fifo_wr_en_reg = 0;
     assign mic_sample_dout = mic_sample_dout_reg;
     assign mic_fifo_wr_en = mic_fifo_wr_en_reg;
 
     always @(negedge bit_clk) begin
-        if (reset_b) begin
-            // reset
-            input_frame <= 0;
-            input_bit_counter <= 0;
-            running <= 0;
-        end
-        else if (~running) begin
+        if (~running) begin
             // First start after reset, wait for sync
             if (sync) begin
                 input_frame <= 0;
@@ -156,8 +150,10 @@ module ac97_controller #(
             // Increase or reset bit counter
             if (input_bit_counter == 1) begin
                 // write mic sample (slot 3) to fifo
-                mic_sample_dout_reg <= input_frame[199:180];
-                mic_fifo_wr_en_reg <= 1;
+                if(input_frame[252]) begin
+                    mic_sample_dout_reg <= {input_frame[255:244] ,input_frame[199:180]};
+                    mic_fifo_wr_en_reg <= 1;
+                end
                 input_bit_counter <= input_bit_counter + 1;
             end else if (input_bit_counter == 255) begin
                 input_bit_counter <= 0;
