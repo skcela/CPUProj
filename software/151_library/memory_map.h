@@ -18,3 +18,13 @@
 
 #define MIC_STATUS (*((volatile uint32_t*)0x80000050))
 #define MIC_SAMPLE (*((volatile uint32_t*)0x80000054))
+// I2C Controller MMIO - reading
+#define I2C_CONTROLLER_READY (*((volatile uint32_t*)0x80000100) & 0x1)
+#define I2C_CONTROLLER_READ_DATA_VALID (*((volatile uint32_t*)0x80000100) & 0x2)
+#define I2C_READ_DATA (*((volatile uint32_t*)0x80000104) & 0xFFFF)
+
+// I2C Controller MMIO - writing
+#define I2C_REG_ADDR (*((volatile uint32_t*)0x80000108))
+#define I2C_WRITE_DATA (*((volatile uint32_t*)0x8000010C))
+#define I2C_SLAVE_ADDR (*((volatile uint32_t*)0x80000110))
+#define I2C_CONTROLLER_FIRE (*((volatile uint32_t*)0x80000114))
