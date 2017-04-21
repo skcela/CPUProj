@@ -30,6 +30,23 @@ module Riscv151 #(
     output mic_fifo_read_en,
     input [31:0] mic_fifo_dout,
 
+    // Ports for i2c
+    input [15:0] i2c_rdata,
+
+    output [15:0] i2c_wdata_unreg,
+    output [15:0] i2c_slave_addr_unreg,
+    output [15:0] i2c_reg_addr_unreg,
+
+    input i2c_ctrl_ready,
+    output i2c_ctrl_valid,
+
+    output i2c_rdata_ready,
+    input i2c_rdata_valid,
+
+    output arb_we,
+    output arb_din,
+    output [19:0] arb_addr,
+
     // Ports for UART that go off-chip to UART level shifter
     input FPGA_SERIAL_RX,
     output FPGA_SERIAL_TX
@@ -159,9 +176,14 @@ module Riscv151 #(
     assign uart_dout_ready = (((alu_out_3 == 32'h80000000) | (alu_out_3 == 32'h80000004))
                               & (opcode_3 == `OPC_LOAD));
 
-    // Read enable for fifo, set in stage 2 becaus it's a sznchronous read
+    // Read enable for fifo, set in stage 2 becaus it's a synchronous read
     assign io_fifo_rd_en = ((alu_out == 32'h80000024)
                               & (opcode_2 == `OPC_LOAD));
+
+
+    // Ready - Valid interface for I2C controller
+    assign i2c_rdata_ready = ((alu_out_3 == 32'h80000104)
+                              & (opcode_3 == `OPC_LOAD));
 
 
     // write to tone generator
@@ -236,6 +258,69 @@ module Riscv151 #(
         end
     end
 
+
+    // Write to i2c controller
+    reg [15:0] i2c_reg_addr, i2c_wdata, i2c_slave_addr;
+    assign i2c_slave_addr_unreg = i2c_slave_addr;
+    assign i2c_wdata_unreg = i2c_wdata;
+    assign i2c_reg_addr_unreg = i2c_reg_addr;
+    reg i2c_ctrl_valid_reg;
+    assign i2c_ctrl_valid = i2c_ctrl_valid_reg;
+
+    always @(posedge clk) begin
+        if(rst) begin
+            i2c_reg_addr <= 0;
+            i2c_wdata <= 0;
+            i2c_slave_addr <= 0;
+            i2c_ctrl_valid_reg <= 0;
+        end else if (opcode_2 == `OPC_STORE) begin
+            if (alu_out == 32'h80000108) begin
+                i2c_reg_addr <= mem_controller_data_out[15:0];
+            end
+
+            if (alu_out == 32'h8000010C) begin
+                i2c_wdata <= mem_controller_data_out[15:0];                
+            end
+            
+            if (alu_out == 32'h80000110) begin
+                i2c_slave_addr <= mem_controller_data_out[15:0];                
+            end
+
+            if (alu_out == 32'h80000114) begin
+                i2c_ctrl_valid_reg <= 1;
+            end
+        end
+
+        if (i2c_ctrl_valid_reg) begin
+                i2c_ctrl_valid_reg <= 0;
+        end
+    end
+
+    // write to frame buffer
+    wire frame_buffer_wen;
+    reg [19:0] arb_addr_reg;
+    assign arb_addr = arb_addr_reg;
+    reg arb_din_reg, arb_we_reg;
+    assign arb_din = arb_din_reg;
+    assign arb_we = arb_we_reg;
+    always @(posedge clk) begin
+        if (rst) begin
+            // reset
+            arb_we_reg <= 0;
+            arb_addr_reg <= 0;
+            arb_din_reg <= 0;
+        end
+        else if (frame_buffer_wen) begin
+            arb_addr_reg <= alu_out[19:0];
+            arb_din_reg <= mem_controller_data_out[0];
+            arb_we_reg <= 1;
+        end else begin
+            arb_we_reg <= 0;
+            arb_din_reg <= 0;
+            arb_addr_reg <= 0;
+        end
+    end
+
     // ------------------------------ MEMORIES - I/O ------------------------------
     mem_write_controller mem_write_controller(
         .instruction(instruction_2),
@@ -247,7 +332,8 @@ module Riscv151 #(
         .imem_write_enable(imem_write_enable),
         .led_write_enable(led_write_enable),
         .cycle_counter_write_enable(cycle_counter_write_enable),
-        .uart_write_enable(uart_write_enable)
+        .uart_write_enable(uart_write_enable),
+        .frame_buffer_wen(frame_buffer_wen)
     );
 
     dmem_blk_ram dmem (
@@ -305,6 +391,11 @@ module Riscv151 #(
         .ac_fifo_full(ac_fifo_full),
         .mic_fifo_empty(mic_fifo_empty),
         .mic_fifo_dout(mic_fifo_dout),
+
+        .i2c_rdata_valid(i2c_rdata_valid),
+        .i2c_ctrl_ready(i2c_ctrl_ready),
+        .i2c_rdata(i2c_rdata),
+
         .data_out(mem_dout)
     );
 

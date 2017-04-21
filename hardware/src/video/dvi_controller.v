@@ -106,7 +106,7 @@ module dvi_controller # (
     initial dvi_de_iob = 1'b0;
     initial dvi_v_iob = 1'b1;
     initial dvi_h_iob = 1'b1;
-    wire dvi_de_logic, dvi_v_logic, dvi_h_logic; // These signals are assigned in your design
+    reg dvi_de_logic, dvi_v_logic, dvi_h_logic; // These signals are assigned in your design
     assign dvi_de = dvi_de_iob;
     assign dvi_v = dvi_v_iob;
     assign dvi_h = dvi_h_iob;
@@ -120,8 +120,8 @@ module dvi_controller # (
     // Don't modify this section. Assign dvi_data_a_logic and dvi_data_b_logic
     // to match the P0a and P0b data shown on the timing diagram of the
     // Chrontel chip datasheet.
-    reg [11:0] dvi_data_a_logic; // These signals are assigned in your design
-    reg [11:0] dvi_data_b_logic;
+    wire [11:0] dvi_data_a_logic; // These signals are assigned in your design
+    wire [11:0] dvi_data_b_logic;
     genvar i;
     generate
         for (i = 0; i < 12; i = i + 1) begin : dvi_buff
@@ -149,12 +149,220 @@ module dvi_controller # (
     // You can change the listed signals above to be regs or wires if needed.
     //
     // You CAN ONLY use the 'clk' input to drive synchronous logic.
-	assign dvi_de_logic = 1'b0;
-    assign dvi_v_logic = 1'b1;
-    assign dvi_h_logic = 1'b1;
-    always @ (posedge clk) begin
-        dvi_data_a_logic <= 0;
-        dvi_data_b_logic <= 0;
+	reg [15:0] clk_counter;
+    reg [9:0]  line_counter;
+    reg [19:0] pixel_counter;
+    assign framebuffer_addr = pixel_counter;
+
+    wire [4:0] red;
+    wire [4:0] blue;
+    wire [4:0] green;
+    assign red   = framebuffer_data ? 5'b11000 : 5'b0;
+    assign green = framebuffer_data ? 5'b11000 : 5'b0;
+    assign blue  = framebuffer_data ? 5'b11111 : 5'b0;
+
+
+    reg [9:0] v_counter;
+    reg [10:0] h_counter;
+
+    always @(posedge clk) begin
+        if (rst) begin
+            // reset
+            v_counter <= 0;
+            h_counter <= 0;
+            pixel_counter <= 0;
+        end
+        else begin
+            if(h_counter == hori_whole_line - 1) begin
+                h_counter <= 0;
+                if(v_counter == vert_whole_frame - 1) begin
+                    v_counter <= 0;
+                end else begin
+                    v_counter <= v_counter + 1;
+                end
+            end else begin
+                h_counter <= h_counter + 1;
+            end
+
+            if((v_counter < vert_sync_pulse + vert_back_porch + vert_visible_area)
+              &(v_counter >= vert_sync_pulse + vert_back_porch)
+              &(h_counter < hori_sync_pulse + hori_back_porch + hori_visible_area)
+              &(h_counter >= hori_sync_pulse + hori_back_porch)
+              &(pixel_counter != 20'hBFFFF)) begin
+                pixel_counter <= pixel_counter + 1;
+            end else if(v_counter == 0 & h_counter == 0) begin
+                pixel_counter <= 0;
+            end
+        end
     end
-    assign framebuffer_addr = 0;
+
+
+    assign dvi_data_a_logic = {green[2:0], blue, 4'b0};
+    assign dvi_data_b_logic = {1'b0, red, green[4:3], 4'b0};
+
+    always @(*) begin
+        if (rst) begin
+            dvi_v_logic <= 1;
+            dvi_h_logic <= 1;
+            dvi_de_logic <= 0;
+        end else if(v_counter < vert_sync_pulse) begin
+            // 1. Start new frame, vsync pulse
+            dvi_v_logic <= 0;
+            dvi_h_logic <= 1;
+            dvi_de_logic <= 0;
+        end else if (v_counter < vert_sync_pulse + vert_back_porch) begin
+            // 2. vert back porch, don't assert anything
+            dvi_v_logic <= 1;
+            dvi_h_logic <= 1;
+            dvi_de_logic <= 0;
+        end else if (v_counter < vert_sync_pulse + vert_back_porch 
+                                  + vert_visible_area) begin
+            if (h_counter < hori_sync_pulse) begin
+                // 3a. set hori sync pulse
+                dvi_v_logic <= 1;
+                dvi_h_logic <= 0;
+                dvi_de_logic <= 0;
+            end else if (h_counter < hori_sync_pulse + hori_back_porch) begin
+                // 3b. hori back porch, don't assert anything
+                dvi_v_logic <= 1;
+                dvi_h_logic <= 1;
+                dvi_de_logic <= 0;
+            end else if (h_counter < hori_sync_pulse + hori_back_porch + hori_visible_area) begin
+                // 3c. send data
+                dvi_v_logic <= 1;
+                dvi_h_logic <= 1;
+                dvi_de_logic <= 1;
+            end else if (h_counter < hori_sync_pulse + hori_back_porch 
+                          + hori_visible_area + hori_front_porch) begin
+                // 3d. hori front porch, don't assert anything
+                dvi_v_logic <= 1;
+                dvi_h_logic <= 1;
+                dvi_de_logic <= 0;
+            end
+        end else if(v_counter < vert_sync_pulse + vert_back_porch 
+                                  + vert_visible_area + vert_front_porch) begin
+            // 4. vert front porch, don't assert anything
+            dvi_v_logic <= 1;
+            dvi_h_logic <= 1;
+            dvi_de_logic <= 0;
+        end else begin
+            // This should never happen because counter will be reset
+            //$display("Error with counters in dvi_controller");
+            dvi_v_logic <= 1;
+            dvi_h_logic <= 1;
+            dvi_de_logic <= 0;
+        end
+
+    end
+
+
+/*
+    reg [2:0] state;
+    localparam s1  = 3'b000,
+               s2  = 3'b001,
+               s3a = 3'b010,
+               s3b = 3'b011,
+               s3c = 3'b100,
+               s3d = 3'b101,
+               s4  = 3'b110;
+
+
+    always @(posedge clk) begin
+        if (rst) begin
+            clk_counter <= 0;
+            line_counter <= 0;
+            pixel_counter <= 0;
+            state <= s1;
+            dvi_v_logic <= 1;
+            dvi_h_logic <= 1;
+            dvi_de_logic <= 0;
+            dvi_data_a_logic <= 0;
+            dvi_data_b_logic <= 0;
+        end else begin
+            case (state)
+                s1: begin // Start new frame, vsync pulse
+                        dvi_v_logic <= 0;
+                        dvi_h_logic <= 1;
+                        dvi_de_logic <= 0;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == vert_sync_pulse * hori_whole_line - 1) begin
+                            dvi_v_logic <= 1;
+                            clk_counter <= 0;
+                            state <= s2;
+                        end
+                        line_counter <= 0;
+                        pixel_counter <= 0;
+                    end
+                s2: begin // vert back porch, don't assert anything
+                        dvi_v_logic <= 1;
+                        dvi_h_logic <= 1;
+                        dvi_de_logic <= 0;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == vert_back_porch * hori_whole_line - 1) begin
+                            dvi_h_logic <= 0;
+                            clk_counter <= 0;
+                            state <= s3a;
+                        end
+                        line_counter <= 0;
+                    end
+                s3a:begin // set hori sync pulse
+                        dvi_v_logic <= 1;
+                        dvi_h_logic <= 0;
+                        dvi_de_logic <= 0;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == hori_sync_pulse - 1) begin
+                            dvi_h_logic <= 1;
+                            clk_counter <= 0;
+                            state <= s3b;
+                        end                
+                        line_counter <= line_counter + 1;
+                    end
+                s3b:begin // hori back porch, don't assert anything
+                        dvi_v_logic <= 1;
+                        dvi_h_logic <= 1;
+                        dvi_de_logic <= 0;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == hori_back_porch - 1) begin
+                            clk_counter <= 0;
+                            state <= s3c;
+                        end
+                    end
+                s3c:begin // send data
+                        dvi_v_logic <= 1;
+                        dvi_h_logic <= 1;
+                        dvi_de_logic <= 1;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == hori_visible_area - 1) begin
+                            clk_counter <= 0;
+                            state <= s3d;
+                        end
+                        pixel_counter <= pixel_counter + 1;
+                        dvi_data_a_logic <= {green[2:0], blue, 4'b0};
+                        dvi_data_b_logic <= {1'b0, red, green[4:3], 4'b0};
+                    end
+                s3d:begin // hori front porch, don't assert anything
+                        dvi_v_logic <= 1;
+                        dvi_h_logic <= 1;
+                        dvi_de_logic <= 0;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == hori_front_porch - 1) begin
+                            clk_counter <= 0;
+                            state <= (line_counter == vert_visible_area) ? s4
+                                                                             : s3a;
+                        end
+                    end
+                s4: begin // vert front porch, don't assert anything
+                        dvi_v_logic <= 1;
+                        dvi_h_logic <= 1;
+                        dvi_de_logic <= 0;
+                        clk_counter <= clk_counter + 1;
+                        if (clk_counter == vert_front_porch * hori_whole_line - 1) begin
+                            clk_counter <= 0;
+                            state <= s1;
+                        end
+                    end
+            endcase
+        end
+    end*/
+
 endmodule

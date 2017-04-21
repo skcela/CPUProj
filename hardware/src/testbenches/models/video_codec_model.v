@@ -35,7 +35,7 @@ Parameters for XGA 1024x768 @ 60 Hz refresh rate
 `define print_hori_timing_info 0
 
 module ch7301c_model # (
-    parameter clock_period = 15.385,
+    parameter clock_period = 15.4,
 
     parameter hori_front_porch = 24,
     parameter hori_sync_pulse = 136,

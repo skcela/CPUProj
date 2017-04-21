@@ -4,6 +4,7 @@ file copy -force ../../../software/i2c_integration_tb/i2c_integration_tb.mif dme
 file copy -force ../../../software/i2c_integration_tb/i2c_integration_tb.mif bios_mem.mif
 add wave i2c_integration_testbench/*
 add wave i2c_integration_testbench/top/*
+add wave i2c_integration_testbench/top/CPU/*
 add wave i2c_integration_testbench/top/i2c_master/*
 add wave i2c_integration_testbench/i2c_slave/*
 run 4ms

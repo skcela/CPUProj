@@ -63,17 +63,6 @@ module ml505top # (
     output        DVI_XCLK_N,     // Differential external clock, synchronous wrt DE, H, V, data[11:0]
     output        DVI_XCLK_P
 );
-    // Remove these lines when implementing checkpoint 3.
-    assign IIC_SDA_VIDEO = 1'b1;
-    assign IIC_SCL_VIDEO = 1'b1;
-    assign DVI_D = 12'b0;
-    assign DVI_DE = 1'b0;
-    assign DVI_H = 1'b0;
-    assign DVI_V = 1'b0;
-    assign DVI_RESET_B = 1'b1;
-    assign DVI_XCLK_N = 1'b1;
-    assign DVI_XCLK_P = 1'b0;
-
 
 
     //// Clocking
@@ -349,6 +338,62 @@ module ml505top # (
         .empty(fifo_empty)
     );
 
+
+    wire [15:0] i2c_rdata, i2c_wdata_unreg, 
+                i2c_slave_addr_unreg, i2c_reg_addr_unreg;
+    wire i2c_ctrl_ready, i2c_ctrl_valid;
+    wire i2c_rdata_valid, i2c_rdata_ready;
+
+    // I2C controller
+    i2c_controller i2c_master(
+        .clk(cpu_clk_g),
+        .reset(reset),
+        .i2c_divider(16'h01F4),
+        .i2c_wdata_unreg(i2c_wdata_unreg),
+        .i2c_slave_addr_unreg(i2c_slave_addr_unreg), 
+        .i2c_reg_addr_unreg(i2c_reg_addr_unreg), 
+        .i2c_rdata(i2c_rdata),
+        .i2c_ctrl_ready(i2c_ctrl_ready), 
+        .i2c_ctrl_valid(i2c_ctrl_valid), 
+        .i2c_rdata_ready(i2c_rdata_ready),  
+        .i2c_rdata_valid(i2c_rdata_valid),
+        .SDA(IIC_SDA_VIDEO), 
+        .SCL(IIC_SCL_VIDEO)
+    );
+
+
+    wire arb_we, arb_din;
+    wire [19:0] arb_addr;
+
+    wire vga_dout;
+    wire [19:0] vga_addr;
+
+    frame_buffer_1_786432 framebuffer(
+        .arb_we(arb_we),
+        .arb_clk(cpu_clk_g),
+        .arb_din(arb_din),
+        .arb_addr(arb_addr),
+        .vga_clk(pixel_clk_g),
+        .vga_dout(vga_dout),
+        .vga_addr(vga_addr)
+    );
+
+    dvi_controller dvi_controller(
+        .clk(pixel_clk_g),
+        .rst(video_reset),
+        .framebuffer_addr(vga_addr),
+        .framebuffer_data(vga_dout),
+        .dvi_data(DVI_D),
+        .dvi_de(DVI_DE),
+        .dvi_h(DVI_H),
+        .dvi_v(DVI_V),
+        .dvi_reset_b(DVI_RESET_B),
+        .dvi_xclk_n(DVI_XCLK_N),
+        .dvi_xclk_p(DVI_XCLK_P)
+    );
+
+
+
     // RISC-V 151 CPU
     Riscv151 #(
         .CPU_CLOCK_FREQ(CPU_CLOCK_FREQ)
@@ -375,6 +420,19 @@ module ml505top # (
         .mic_fifo_empty(mic_fifo_empty),
         .mic_fifo_read_en(mic_fifo_read_en),
         .mic_fifo_dout(mic_fifo_dout),
+
+        .i2c_rdata(i2c_rdata),
+        .i2c_wdata_unreg(i2c_wdata_unreg),
+        .i2c_slave_addr_unreg(i2c_slave_addr_unreg), 
+        .i2c_reg_addr_unreg(i2c_reg_addr_unreg), 
+        .i2c_ctrl_ready(i2c_ctrl_ready), 
+        .i2c_ctrl_valid(i2c_ctrl_valid), 
+        .i2c_rdata_ready(i2c_rdata_ready),  
+        .i2c_rdata_valid(i2c_rdata_valid),
+
+        .arb_we(arb_we),
+        .arb_addr(arb_addr),
+        .arb_din(arb_din),
 
         .FPGA_SERIAL_RX(FPGA_SERIAL_RX),
         .FPGA_SERIAL_TX(FPGA_SERIAL_TX)

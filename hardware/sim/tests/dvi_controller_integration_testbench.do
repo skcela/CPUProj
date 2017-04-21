@@ -9,5 +9,5 @@ add wave dvi_controller_integration_testbench/top/*
 add wave dvi_controller_integration_testbench/top/CPU/*
 add wave dvi_controller_integration_testbench/top/framebuffer/*
 add wave dvi_controller_integration_testbench/top/video_arbiter/*
-add wave dvi_controller_integration_testbench/top/video_ctrl/*
+add wave dvi_controller_integration_testbench/top/dvi_controller/*
 run 17ms

@@ -11,7 +11,8 @@ module mem_write_controller(
 	output [3:0] imem_write_enable,
 	output led_write_enable,
 	output cycle_counter_write_enable,
-	output uart_write_enable
+	output uart_write_enable,
+	output frame_buffer_wen
 	);
 
 	wire [6:0] opcode;
@@ -34,12 +35,18 @@ module mem_write_controller(
 			case(funct3)
 				`FNC_SB: begin
 							write_enable_mask_reg = 4'b0001 << address[1:0];
-							case(address[1:0])
-								2'b00:	data_out_reg = {24'b0, data_in[7:0]};
-								2'b01:	data_out_reg = {16'b0, data_in[7:0], 8'b0};
-								2'b10:	data_out_reg = {8'b0, data_in[7:0], 16'b0};
-								2'b11:	data_out_reg = {data_in[7:0], 24'b0};
-							endcase
+							if (address[31:28] == 4'b1001) begin
+								// write to dvi controller, 
+								// always write lowest byte
+								data_out_reg = {24'b0, data_in[7:0]};
+							end else begin
+								case(address[1:0])
+									2'b00:	data_out_reg = {24'b0, data_in[7:0]};
+									2'b01:	data_out_reg = {16'b0, data_in[7:0], 8'b0};
+									2'b10:	data_out_reg = {8'b0, data_in[7:0], 16'b0};
+									2'b11:	data_out_reg = {data_in[7:0], 24'b0};
+								endcase
+							end
 						 end
 				`FNC_SH: begin
 							write_enable_mask_reg = 4'b0011 << address[1:0];
@@ -70,11 +77,13 @@ module mem_write_controller(
 		end
 	end
 
-	assign dmem_write_enable = {4{address[28]}};
-	assign imem_write_enable = {4{address[29]}};
+	assign dmem_write_enable = (address[31:28] == 4'b0001) | 
+							   (address[31:28] == 4'b0011) ? 4'b1111 : 4'b0000;
+	assign imem_write_enable = (address[31:28] == 4'b0010) | 
+							   (address[31:28] == 4'b0011) ? 4'b1111 : 4'b0000;
 	assign cycle_counter_write_enable = (address== 32'h80000018) & (opcode == `OPC_STORE);
 	assign uart_write_enable = (address== 32'h80000008) & (opcode == `OPC_STORE);
 	assign led_write_enable = (address== 32'h80000030) & (opcode == `OPC_STORE);
-
+	assign frame_buffer_wen = (address[31:28] == 4'b1001) & (opcode == `OPC_STORE);
 
 endmodule

@@ -17,7 +17,7 @@ module dvi_controller_testbench ();
 
     reg pixel_clock = 1;
 	reg cpu_clock = 1;
-	localparam PIXEL_CLOCK_PERIOD = 15.385; // 65 MHz clock
+	localparam PIXEL_CLOCK_PERIOD = 15.4; // 65 MHz clock
 	localparam CPU_CLOCK_PERIOD = 20; // 50 Mhz clock
 
 	always #(PIXEL_CLOCK_PERIOD/2) pixel_clock = ~pixel_clock;
