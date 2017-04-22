@@ -186,8 +186,8 @@ module dvi_controller # (
 
             if((v_counter < vert_sync_pulse + vert_back_porch + vert_visible_area)
               &(v_counter >= vert_sync_pulse + vert_back_porch)
-              &(h_counter < hori_sync_pulse + hori_back_porch + hori_visible_area)
-              &(h_counter >= hori_sync_pulse + hori_back_porch)
+              &(h_counter < hori_sync_pulse + hori_back_porch + hori_visible_area - 1)
+              &(h_counter >= hori_sync_pulse + hori_back_porch - 1)
               &(pixel_counter != 20'hBFFFF)) begin
                 pixel_counter <= pixel_counter + 1;
             end else if(v_counter == 0 & h_counter == 0) begin
