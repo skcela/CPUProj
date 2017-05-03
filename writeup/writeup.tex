@@ -1,0 +1,63 @@
+\documentclass[12pt]{article}
+\usepackage{enumitem}
+\usepackage[fleqn]{amsmath}
+\usepackage{graphicx}
+
+\title{EECS 151/251A - LB\\ RISC-V FPGA Project}
+\author{Alejandro Sierra \\ Jakob Peter Karg\\ UC Berkeley}
+\date{Spring 2017}
+
+
+\begin{document}
+\maketitle
+
+\section{Design objectives}
+
+The goal of this project was to implement a complete version of a RISC-V CPU with a three stage pipeline. The CPU was implemented using Verilog and targeted the VIRTEX 5 LX110T FPGA by Xilinx.
+
+\subsection{Pipeline}
+\label{sub:pipeline-intro}
+The CPU was implemented with a three stage pipeline. Because the memory is implemented using synchronous bram blocks, two of the three stages were fixed to be at the instruction- and data-memory. We decided to put the third stage in between the register file and the ALU.
+
+\subsection{Memory hierarchy}
+
+The instruction- and data-memory are implemented using synchronous bram blocks. There are three memories: The instruction memory, the data memory and the BIOS memory. The BIOS memory is a read-only memory which contains the BIOS, which is executed when the CPU gets reset. The BIOS can read instructions over the UART and write them to the instruction memory. This way, the processor can be programmed to execute a program over UART.
+We are using memory-mapped IO to connect to various peripherals. We implemented a memory-read- and a memory-write-controller that map the addresses to the corresponding memory / IO device.
+
+\section{High-Level organization}
+The CPU is broken up into three pipeline stages as described in \ref{sub:pipeline-intro}. The first stage contains the instruction memory, the register file and the control logic for the next pc. The second stage contains the ALU as well as the calculation of the branch address and the branch condition and a memory write controller. The third stage contains the data memory and the memory mapped IO, the memory read controller and the writeback to the register file. In parallel to all of that there is the control unit, which takes in the instruction in the first stage and calculates the control signals for all multiplexers in the CPU. It detects data hazards and forwards the data through the necessary multiplexers. It also detects control flow hazards and sets the multiplexer which controls the next pc and kills the instruction in the second stage if necessary.
+The block diagram can be seen in figure \ref{fig:block-diagram}.
+
+\begin{figure}[!hbtp]
+%\includegraphics[]{cpu.png}
+\caption{Block diagram of the three stage pipeline}
+\label{fig:block-diagram}
+\end{figure}
+
+
+\section{Detailed description of modules}
+\subsection*{Stage 1: Instruction Fetch and Decode}
+In the first stage, the instruction is read out of the instruction memory. The BIOS memory and the instruction memory are in parallel and there is a multiplexer, which is controlled by bit 31 of the program counter, which decides if the instruction from the instruction memory or the BIOS memory should be executed. Because all the memories are synchronous, it is important that the address input should be the address of the next instruction to execute, not the current one. So the address should be pc+4, not just pc. \\\\
+After the instruction was read from the instruction memory, it gets decoded. This means that the registers specified by the instructions are read from the register files. These are asynchronous reads, so the data is available shortly after the instruction is available at the input of the register file.
+
+\subsection{Stage 2: Execute}
+In the second stage, the instruction gets executed. There are two multiplexers, one for each input of the ALU, which are controlled by the control unit (\ref{sub:control-unit}). These multiplexers forward either the register output or the correct immediate, depending on the instruction, to the input of the ALU. They can also forward the output of the previous operation to the ALU if necessary. The ALU is controlled by the ALU controller, which takes in the instruction and passes an opcode to the ALU, which then executes the correct operation.\\\\
+Also in the second stage, the branch address is calculated by a dedicated adder, which adds the pc and the immediate and the branch condition is calculated by the ALU.\\\\
+Because the memories are synchronous, the memory write controller is also in the second stage. It takes in the data, which is either the output of the register file or the forwarded output of the previous operation if there is a data hazard, and it creates write enables for the different memories and IO devices depending on the memory map. It also creates a data out signal, which contains the data that should be written to the memory. This is necessary because the memory is byte addressed but the brams can only be accessed one word at a time. So the memory-write-controller takes the data and shifts it to the corresponding byte, depending on the type of store instruction (store byte / halfword / word) and the lowest two address bits.
+
+
+\subsection*{Stage 3: Memory and Writeback}
+The output of the ALU gets connected to the address input of the memories and the output of the memory-write-controller to the data input and the write enable. The output of all memories and IO devices then goes into the memory-read-controller, which forwards the data from the correct device depending on the memory map and shifts / sign extends the data depending on the type of the load instruction (signed / unsigned, byte / halfword / word).\\
+The writeback multiplexer, which is also controlled by the control unit the chooses which data to write back to the register file depending on the instruction.
+
+\subsection*{Control unit}
+\label{sub:control-unit}
+The control unit is a separate module which computes the control signals for all multiplexers in the ALU. It checks for data and control flow hazards by comparing the instructions in the different stages and sets the multiplexers to forward data if necessary.
+
+\subsubsection*{Branch prediction}
+The control unit also performs a naive form of static branch prediction. We always assume that a branch is not taken. This means that when there is a branch instruction, we always fetch the next instruction and if the branch is taken, which we know after the branch condition gets evaluated in the second stage, we kill the instruction in the first stage. If the branch is not taken, we just continue execution and no stall or kill was necessary.
+
+
+
+
+\end{document}
