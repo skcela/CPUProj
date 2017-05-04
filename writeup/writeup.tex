@@ -29,8 +29,8 @@ We are using memory-mapped IO to connect to various peripherals. We implemented 
 The CPU is broken up into three pipeline stages as described in \ref{sub:pipeline-intro}. The first stage contains the instruction memory, the register file and the control logic for the next pc. The second stage contains the ALU as well as the calculation of the branch address and the branch condition and a memory write controller. The third stage contains the data memory and the memory mapped IO, the memory read controller and the writeback to the register file. In parallel to all of that there is the control unit, which takes in the instruction in the first stage and calculates the control signals for all multiplexers in the CPU. It detects data hazards and forwards the data through the necessary multiplexers. It also detects control flow hazards and sets the multiplexer which controls the next pc and kills the instruction in the second stage if necessary.
 The block diagram can be seen in figure \ref{fig:block-diagram}.
 
-\begin{figure}[!hbtp]
-%\includegraphics[]{cpu.png}
+\begin{figure}[!p]
+\includegraphics[scale = 0.32, angle=90]{datapath_Diagram.pdf}
 \caption{Block diagram of the three stage pipeline}
 \label{fig:block-diagram}
 \end{figure}
@@ -54,6 +54,7 @@ The writeback multiplexer, which is also controlled by the control unit the choo
 \subsection{Control unit}
 \label{sub:control-unit}
 The control unit is a separate module which computes the control signals for all multiplexers in the ALU. It checks for data and control flow hazards by comparing the instructions in the different stages and sets the multiplexers to forward data if necessary.
+\subsubsection{Hazards}
 The control unit detects the following data hazards:
 \begin{itemize}
 \item Instruction depends on the result of the previous instruction. The data gets forwarded from stage three to stage two.
@@ -62,7 +63,7 @@ The control unit detects the following data hazards:
 \end{itemize}
 
 
-\subsubsection*{Branch prediction}
+\subsubsection{Branch prediction}
 The control unit also performs a naive form of static branch prediction. We always assume that a branch is not taken. This means that when there is a branch instruction, we always fetch the next instruction and if the branch is taken, which we know after the branch condition gets evaluated in the second stage, we kill the instruction in the first stage. This behavior can be seen in the waveform in fig. \ref{fig:branch-taken}. The \texttt{LW} instruction is fetched in the first stage but once the branch condition is evaluated, the instruction is killed and the instruction at the branch address is fetched next. If the branch is not taken, we just continue execution and no stall or kill is necessary. This can be seen in fig. \ref{fig:branch-not-taken}. The \texttt{LW} instruction after the branch gets fetched in the first stage and then executed as usual, because the branch is not taken.
 
 \begin{figure}[!hbtp]
@@ -91,7 +92,8 @@ The AC97 controller consists of a bit counter, which counts how many bits of the
 The serial input is sampled at the negative edge of the clock input. To enable the microphone input, the corresponding registers have to be set. To do that, they are included in the control loop, which sets one control register every cycle. There is a second bit counter for the input bits, which gets reset every time the sync signal gets set. Once a full frame was received, it is written to the asynchronous microphone FIFO.
 
 \subsection{DVI Controller}
-The DVI Controller consists of two counters, one for the vertical and one for the horizontal position. Depending on the values of the counters, the v, h, and de signals are set for the front- and back-porch.
+The DVI Controller consists of two counters, one for the vertical and one for the horizontal position. Depending on the values of the counters, the v, h, and de signals are set for the front- and back-porch. There is also a pixel counter, which acts as the address to the framebuffer. It gets incremented whenever the horizontal and vertical counters are in the visible area and it gets reset when a frame is completed.
+The framebuffer can be accessed from the CPU as memory mapped IO.
 
 
 \section{Status and Result}
@@ -122,12 +124,20 @@ With these numbers, the total execution time of the matrix multiplication progra
 \end{gather*}
 
 
-The critical path is the path from the bios memory, through the forwarding into the ALU, then into the branch condition, to the next pc and back to the bios memory. This path is used when a branch instruction follows a load instruction that reads from the bios memory and there is a hazard.
+The critical path is the path from the bios memory, through the forwarding into the ALU, then into the branch condition, to the next pc and back to the bios memory. This path is used when a branch instruction follows a load instruction that reads from the bios memory and there is a hazard. The critical path can be seen in figure \ref{fig:crit-path}.
 
 \begin{lstlisting}
 lw  X2, 0(X2)       # X2 contains address in bios mem
 beq X1, X1, branch 
 \end{lstlisting}
+
+
+\begin{figure}[!hbtp]
+\centering
+\includegraphics[scale = 0.32, angle = 90]{DiagramCriticalPath.pdf}    
+\caption{Block diagram of the critical path}
+\label{fig:crit-path}
+\end{figure}
 
 \subsection{Resource utilization}
 Our entire implementation (including all IO devices) uses the following resources:
