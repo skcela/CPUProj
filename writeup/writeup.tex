@@ -39,7 +39,7 @@ The block diagram can be seen in figure \ref{fig:block-diagram}.
 \section{Detailed description of modules}
 \subsection{Stage 1: Instruction Fetch and Decode}
 In the first stage, the instruction is read out of the instruction memory. The BIOS memory and the instruction memory are in parallel and there is a multiplexer, which is controlled by bit 31 of the program counter, which decides if the instruction from the instruction memory or the BIOS memory should be executed. Because all the memories are synchronous, it is important that the address input should be the address of the next instruction to execute, not the current one. So the address should be pc+4, not just pc. \\\\
-After the instruction was read from the instruction memory, it gets decoded. This means that the registers specified by the instructions are read from the register files. These are asynchronous reads, so the data is available shortly after the instruction is available at the input of the register file.
+After the instruction was read from the instruction memory, it gets decoded. This means that the registers specified by the instructions are read from the register files. These are asynchronous reads, so the data is available at the output shortly after the instruction is set at the input of the register file.
 
 \subsection{Stage 2: Execute}
 In the second stage, the instruction gets executed. There are two multiplexers, one for each input of the ALU, which are controlled by the control unit (\ref{sub:control-unit}). These multiplexers forward either the register output or the correct immediate, depending on the instruction, to the input of the ALU. They can also forward the output of the previous operation to the ALU if necessary. The ALU is controlled by the ALU controller, which takes in the instruction and passes an opcode to the ALU, which then executes the correct operation.\\\\
@@ -49,7 +49,7 @@ Because the memories are synchronous, the memory write controller is also in the
 
 \subsection{Stage 3: Memory and Writeback}
 The output of the ALU gets connected to the address input of the memories and the output of the memory-write-controller to the data input and the write enable. The output of all memories and IO devices then goes into the memory-read-controller, which forwards the data from the correct device depending on the memory map and shifts / sign extends the data depending on the type of the load instruction (signed / unsigned, byte / halfword / word).\\
-The writeback multiplexer, which is also controlled by the control unit the chooses which data to write back to the register file depending on the instruction.
+The writeback multiplexer, which is also controlled by the control unit then chooses which data to write back to the register file depending on the instruction.
 
 \subsection{Control unit}
 \label{sub:control-unit}
@@ -86,7 +86,7 @@ The AC97 controller is connected to the ALU with two asynchronous FIFOs, one for
 The control registers of the AC97 controller are set in a continuous loop. With each frame, one control register gets set to the correct value.
 
 \subsubsection{AC97 Controller output}
-The AC97 controller consists of a bit counter, which counts how many bits of the current frame have been sent so far. At the end of a frame, a new sample is read from the asynchronous sample FIFO, which then gets send out in the next frame. If the FIFO is empty, the previous sample is send again. The frame gets shifted out over the serial output at the positive edge of the bit clock.
+The AC97 controller consists of a bit counter, which counts how many bits of the current frame have been sent so far. At the end of a frame, a new sample is read from the asynchronous sample FIFO, which then gets sent out in the next frame. If the FIFO is empty, the previous sample is sent again. The frame gets shifted out over the serial output at the positive edge of the bit clock.
 
 \subsubsection{AC97 Controller microphone input}
 The serial input is sampled at the negative edge of the clock input. To enable the microphone input, the corresponding registers have to be set. To do that, they are included in the control loop, which sets one control register every cycle. There is a second bit counter for the input bits, which gets reset every time the sync signal gets set. Once a full frame was received, it is written to the asynchronous microphone FIFO.
@@ -124,13 +124,14 @@ With these numbers, the total execution time of the matrix multiplication progra
 \end{gather*}
 
 
-The critical path is the path from the bios memory, through the forwarding into the ALU, then into the branch condition, to the next pc and back to the bios memory. This path is used when a branch instruction follows a load instruction that reads from the bios memory and there is a hazard. The critical path can be seen in figure \ref{fig:crit-path}.
+The critical path is the path from the bios memory, through the forwarding into the ALU, then into the branch condition, to the next pc and back to the bios memory. This path is used when a branch instruction follows a load instruction that reads from the bios memory and there is a hazard: 
 
 \begin{lstlisting}
-lw  X2, 0(X2)       # X2 contains address in bios mem
+lw  X1, 0(X2)       # X2 contains address in bios mem
 beq X1, X1, branch 
 \end{lstlisting}
 
+The critical path can be seen in figure \ref{fig:crit-path}.
 
 \begin{figure}[!hbtp]
 \centering
@@ -155,5 +156,8 @@ BlockRAM & 60 \\
 \end{table}
 
 \section{Conclusion}
+During this project we learned that its very important to separate the design into many small modules. This allows you to have a better overview of how the processors works and it simplifies making changes along the way. \\
+We also learned that excessive testing is very hard and time consuming. There are a lot of corner cases, especially when it comes to hazards, so it is hard to make sure that you catch all of them.
+
 
 \end{document}
